@@ -58,10 +58,9 @@ public class SecurityConfig {
 					response.sendRedirect("/login");
 				}
 			})
-			.permitAll()  //로그인페이지를 모든 사용자가 접근 가능하도록 설정
-			.and();
+			.permitAll();  //로그인페이지를 모든 사용자가 접근 가능하도록 설정
 
-			//region logout
+		//region logout
 		http
 			.logout()                                     //Post로 진행해야함
 			.logoutUrl("/logout")                         // 로그아웃 처리 url
@@ -73,15 +72,23 @@ public class SecurityConfig {
 					session.invalidate();
 				}
 			})
-			.logoutSuccessHandler(new LogoutSuccessHandler() { 		 // 로그아웃 성공 후 핸들러
+			.logoutSuccessHandler(new LogoutSuccessHandler() {         // 로그아웃 성공 후 핸들러
 				@Override
 				public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
 					response.sendRedirect("/login");
 				}
 			})
-			.deleteCookies("JSESSIONID", "remember-me");  // 로그아웃 후 쿠키 삭제
-			// endregion
+			.deleteCookies("JSESSIONID", "remember-me"); // 로그아웃 후 쿠키 삭제
+		// endregion
 
+		//region rememberMe
+		http
+			.rememberMe()
+			.rememberMeParameter("remember")  // 기본 파라미터명은 remember-me
+			.tokenValiditySeconds(3600)  // 유지 시간 Default 는 14일
+			.alwaysRemember(false) // 리멤버 미 기능을 활성화하지 않아도 계속 실행할 것인지
+
+		//endregion
 
 		;
 		return http.build();
