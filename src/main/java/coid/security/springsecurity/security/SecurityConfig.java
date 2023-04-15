@@ -37,9 +37,9 @@ public class SecurityConfig {
 	@Bean
 	public InMemoryUserDetailsManager userDetailsService() {
 		List<UserDetails> users = new ArrayList<>();
-		users.add(User.withDefaultPasswordEncoder().username("user").password("1111").roles("USER").build());
-		users.add(User.withDefaultPasswordEncoder().username("sys").password("1111").roles("SYS").build());
-		users.add(User.withDefaultPasswordEncoder().username("admin").password("1111").roles("ADMIN", "USER").build());
+		users.add(User.builder().username("user").password("{noop}1111").roles("USER").build());
+		users.add(User.builder().username("sys").password("{noop}11111").roles("SYS").build());
+		users.add(User.builder().username("admin").password("{noop}11111").roles("ADMIN", "USER").build());
 		return new InMemoryUserDetailsManager(users);
 	}
 }
