@@ -7,3 +7,6 @@ spring:
     user:
       name: admin
       password: 1234
+
+  main:
+    allow-bean-definition-overriding: true
