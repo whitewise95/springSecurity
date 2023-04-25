@@ -41,7 +41,6 @@ public class SecurityConfig {
 		http
 			.formLogin();
 		http.csrf().disable();
-
 		return http.build();
 	}
 
