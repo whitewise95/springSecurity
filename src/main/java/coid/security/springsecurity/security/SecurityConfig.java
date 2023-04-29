@@ -3,10 +3,12 @@ package coid.security.springsecurity.security;
 import java.security.cert.Extension;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
@@ -24,14 +26,19 @@ public class SecurityConfig {
 			.authorizeRequests()
 			.antMatchers("/").permitAll()
 			.antMatchers("/mypage").hasRole("USER")
-			.antMatchers("/messages").hasRole("MANAGER")
-			.antMatchers("/config").hasRole("ADMIN")
+			.antMatchers("/messages").hasRole("MANAGER, USER")
+			.antMatchers("/config").hasRole("ADMIN, MANAGER, USER")
 			.anyRequest().authenticated()
 
 			.and()
 			.formLogin();
 
 		return http.build();
+	}
+
+	@Bean
+	public WebSecurityCustomizer webSecurityCustomizer() {
+		return (web) -> web.ignoring().requestMatchers(PathRequest.toStaticResources().atCommonLocations());
 	}
 
 	@Bean

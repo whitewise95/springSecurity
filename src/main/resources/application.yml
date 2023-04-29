@@ -1,7 +1,28 @@
 server:
   port: 8090
 
-
 spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/springboot
+    username: postgres
+    password: pass
+
+  thymeleaf:
+    cache: false
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+
   main:
     allow-bean-definition-overriding: true
+
+logging.level:
+  org.hibernate.SQL: debug
+  org.hibernate.type: trace
+
