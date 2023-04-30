@@ -24,7 +24,7 @@ public class SecurityConfig {
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
 			.authorizeRequests()
-			.antMatchers("/").permitAll()
+			.antMatchers("/", "/users").permitAll()
 			.antMatchers("/mypage").hasRole("USER")
 			.antMatchers("/messages").hasRole("MANAGER, USER")
 			.antMatchers("/config").hasRole("ADMIN, MANAGER, USER")

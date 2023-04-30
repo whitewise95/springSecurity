@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/springboot
-    username: postgres
-    password: pass
+    url: jdbc:postgresql://localhost:5432/springsecurity
+    username: whitewise
+    password: 1111
 
   thymeleaf:
     cache: false
