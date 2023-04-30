@@ -10,8 +10,6 @@ public class UserController {
 	
 	@GetMapping(value="/mypage")
 	public String myPage() throws Exception {
-
-		
 		return "/user/mypage";
 	}
 }
