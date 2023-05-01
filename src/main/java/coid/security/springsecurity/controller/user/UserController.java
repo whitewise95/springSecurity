@@ -34,6 +34,6 @@ public class UserController {
 		Account account = AccountDtoMapper.INSTANCE.create(accountDto);
 		account.setPassword(passwordEncoder.encode(account.getPassword()));
 		userService.createUser(account);
-		return "redirect:/";
+			return "redirect:/";
 	}
 }
