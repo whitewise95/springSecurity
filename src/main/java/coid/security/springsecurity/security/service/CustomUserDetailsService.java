@@ -31,8 +31,6 @@ public class CustomUserDetailsService implements UserDetailsService {
 
 		List<GrantedAuthority> roles = new ArrayList<>();  // DB에서 조회된 회원 ROLE을 담는 리스트
 		roles.add(new SimpleGrantedAuthority(account.getRole()));
-
-		AccountContext accountContext = new AccountContext(account, roles);
-		return accountContext;
+		return new AccountContext(account, roles);
 	}
 }
