@@ -32,8 +32,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/messages").hasRole("MANAGER, USER")
                 .antMatchers("/config").hasRole("ADMIN, MANAGER, USER")
                 .anyRequest().authenticated()
-                .and()
-                .formLogin();
+        .and()
+                .formLogin()
+                .loginPage("/login")
+                .loginProcessingUrl("/login_proc") //login form의 action과 동일한 url로 유지해줘야한다.
+                .defaultSuccessUrl("/")
+                .permitAll()
+
+
+        ;
     }
 
     @Override
