@@ -1,110 +1,30 @@
-# 4-10 인증 실패 핸들러 : CustomAuthenticationFailureHandler
+# 스프링 시큐리티 
+> Spring Boot 기반으로 개발하는 Spring Security
 
-## SimpleUrlAuthenticationFailureHandler
-> SimpleUrlAuthenticationFailureHandler를 상속할 클래스를 생성한다.
-> 각 에러마다 핸들링을 할 수 있으며, 부모의 `onAuthenticationFailure` 메소드를 이용하면 디폴트 url로 이동이 가능하다.
-```java
-@Component
-public class CustomAuthenticationFailureHandler extends SimpleUrlAuthenticationFailureHandler {
+## 공부 목적 
+- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
 
-    @Override
-    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
+## 개발 환경
+- JDK 11
+- Postgres
+- Intellij
+- JPA
+- Thymeleaf
+- Lombok
 
-        String errorMessage = "Invalid Username or Password";
+## 강의에서 다루는 내용  
 
-        if (exception instanceof BadCredentialsException) {
-            errorMessage = "Invalid Username or Password";
-        } else if (exception instanceof InsufficientAuthenticationException) {
-            errorMessage = "Invalid Secret Key";
-        }
+#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
+   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
+   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
 
-        setDefaultFailureUrl("/login?error=true&exception=" + errorMessage);
-        super.onAuthenticationFailure(request, response, exception);
-    }
-}
-```
+<br>
 
-## /login 
-> 에러여부와 에러메세지를 param으로 error와 exception로 전달하고 있기에 해당 핸들러를 아래와 같이 핸들링해준다.
-```java
-    @GetMapping("/login")
-    public String login(@RequestParam(value = "error", required = false) Boolean error,
-                        @RequestParam(value = "exception", required = false) String exception,
-                        Model model){
-        model.addAttribute("error", error);
-        model.addAttribute("exception", exception);
-        return "user/login/login";
-    }
-```
+#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
+   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
 
-## SecurityConfig 설정
-> AuthenticationFailureHandler를 주입해주고 ` .failureHandler(authenticationFailureHandler)` 를 추가해준다.
-```java
-@Configuration
-@EnableWebSecurity
-@RequiredArgsConstructor
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+<br>
 
-    private final UserDetailsService userDetailsService;
-    private final AuthenticationDetailsSource authenticationDetailsSource;
-    private final AuthenticationSuccessHandler authenticationSuccessHandler; 
-    private final AuthenticationFailureHandler authenticationFailureHandler; //추가
-
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http
-                .authorizeRequests()
-                .antMatchers("/", "/users", "/login*").permitAll()
-                .antMatchers("/mypage").hasRole("USER")
-                .antMatchers("/messages").hasRole("MANAGER, USER")
-                .antMatchers("/config").hasRole("ADMIN, MANAGER, USER")
-                .anyRequest().authenticated()
-                .and()
-                .formLogin()
-                .loginPage("/login")
-                .loginProcessingUrl("/login_proc") //login form의 action과 동일한 url로 유지해줘야한다.
-                .authenticationDetailsSource(authenticationDetailsSource)
-                .defaultSuccessUrl("/")
-                .successHandler(authenticationSuccessHandler)
-                .failureHandler(authenticationFailureHandler)  //추가
-                .permitAll()
-
-
-        ;
-    }
-}
-```
-
-## login.html 추가
-> error와 exception를 받아 유저에게 메세지를 띄어줄 수 있도록 한다.
-```html
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="layout/header::userHead"></head>
-<body>
-<div th:replace="layout/top::header"></div>
-<div class="container text-center">
-    <div class="login-form d-flex justify-content-center">
-        <div class="col-sm-5" style="margin-top: 30px;">
-            <div class="panel">
-                <p>아이디와 비밀번호를 입력해주세요</p>
-            </div>
-            <div th:if="${param.error}" class="form-group">
-                <span th:text="${exception}" class="alert alert-danger">잘못된 아이디나 암호입니다</span>
-            </div>
-            <form th:action="@{/login_proc}" class="form-signin" method="post">
-                <input type="hidden" th:value="secret2" name="secret_key" />
-                <div class="form-group">
-                    <input type="text" class="form-control" name="username" placeholder="아이디" required="required" autofocus="autofocus">
-                </div>
-                <div class="form-group">
-                    <input type="password" class="form-control" name="password" placeholder="비밀번호" required="required">
-                </div>
-                <button type="submit" class="btn btn-lg btn-primary btn-block">로그인</button>
-            </form>
-        </div>
-    </div>
-</div>
-</body>
-</html>
-```
+#### 3. 실전프로젝트
+   - 인증 기능 구현 : Form방식, Ajax인증처리 
+   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
