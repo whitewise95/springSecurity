@@ -1,30 +1,61 @@
-# 스프링 시큐리티 
-> Spring Boot 기반으로 개발하는 Spring Security
+# 4-9 인증 성공 핸들러 : CustomAuthenticationSuccessHandler
 
-## 공부 목적 
-- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
+## SimpleUrlAuthenticationSuccessHandler 
+> SimpleUrlAuthenticationSuccessHandler를 상속할 클래스를 생성해 로그인시 이전 접속하려했던 주소를 가지고 있는 `requestCache` 와  `redirect`해줄 RedirectStrategy 를 선언해준다.
+```java
+@Component
+public class CustomAuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-## 개발 환경
-- JDK 11
-- Postgres
-- Intellij
-- JPA
-- Thymeleaf
-- Lombok
+    private RequestCache requestCache = new HttpSessionRequestCache();
+    private RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
 
-## 강의에서 다루는 내용  
+    @Override
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+        setDefaultTargetUrl("/");  // 이전정보가 없을 경우 디폴트 url 설정
 
-#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
-   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
-   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
+        SavedRequest savedRequest = requestCache.getRequest(request, response); 
+        if (savedRequest != null) { // 로그인시 이전정보가 없을 경우 생성되지 않아서 null체크
+            String redirectUrl = savedRequest.getRedirectUrl();
+            redirectStrategy.sendRedirect(request, response, redirectUrl);
+        } else {
+            redirectStrategy.sendRedirect(request, response, getDefaultTargetUrl());
+        }
+    }
+}
+```
 
-<br>
+## SecurityConfig 설정
+> AuthenticationSuccessHandler 주입해주고 ` .successHandler(authenticationSuccessHandler) ` 를 추가해 생성해준 `CustomAuthenticationSuccessHandler` 를 사용할 수 있도록한다.
+```java
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
-#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
-   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
+    private final UserDetailsService userDetailsService;
+    private final AuthenticationDetailsSource authenticationDetailsSource;
+    private final AuthenticationSuccessHandler authenticationSuccessHandler;  // 추가 
 
-<br>
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .authorizeRequests()
+                .antMatchers("/", "/users").permitAll()
+                .antMatchers("/mypage").hasRole("USER")
+                .antMatchers("/messages").hasRole("MANAGER, USER")
+                .antMatchers("/config").hasRole("ADMIN, MANAGER, USER")
+                .anyRequest().authenticated()
+                .and()
+                .formLogin()
+                .loginPage("/login")
+                .loginProcessingUrl("/login_proc") //login form의 action과 동일한 url로 유지해줘야한다.
+                .authenticationDetailsSource(authenticationDetailsSource)
+                .defaultSuccessUrl("/")
+                .successHandler(authenticationSuccessHandler)   // 추가 
+                .permitAll()
 
-#### 3. 실전프로젝트
-   - 인증 기능 구현 : Form방식, Ajax인증처리 
-   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
+
+        ;
+    }
+}
+```
