@@ -1,5 +1,6 @@
 package coid.security.springsecurity.security;
 
+import coid.security.springsecurity.security.handler.CustomAccessDeniedHandler;
 import coid.security.springsecurity.security.provider.CustomAuthenticationProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
@@ -15,6 +16,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
@@ -39,6 +41,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/config").hasRole("ADMIN, MANAGER, USER")
                 .anyRequest().authenticated()
         .and()
+                .exceptionHandling()  //추가
+                .accessDeniedHandler(accessDeniedHandler()) //추가
+        .and()
                 .formLogin()
                 .loginPage("/login")
                 .loginProcessingUrl("/login_proc") //login form의 action과 동일한 url로 유지해줘야한다.
@@ -50,6 +55,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 
         ;
+    }
+
+    private AccessDeniedHandler accessDeniedHandler() { //추가
+        CustomAccessDeniedHandler deniedHandler = new CustomAccessDeniedHandler();
+        deniedHandler.setErrorPage("/denied");
+        return deniedHandler;
     }
 
     @Override
