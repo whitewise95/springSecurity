@@ -1,134 +1,30 @@
-# 5-2) 인증 필터 - AjaxAuthenticationFilter
+# 스프링 시큐리티 
+> Spring Boot 기반으로 개발하는 Spring Security
 
-## AbstractAuthenticationProcessingFilter 상속
-- 생성시 요청한 uri가 '/api/login' 가 맞는지 체크한다.
-- isAjax() 메소드를 만들어 Ajax로 요청한 부분이 맞는지 체크한다. 
-- AjaxAuthenticationToken을 만들어 리턴해준다.
-```java
-public class AjaxLoginProcessingFilter extends AbstractAuthenticationProcessingFilter {
+## 공부 목적 
+- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
 
-	public AjaxLoginProcessingFilter() {
-		super(new AntPathRequestMatcher("/api/login"));
-	}
+## 개발 환경
+- JDK 11
+- Postgres
+- Intellij
+- JPA
+- Thymeleaf
+- Lombok
 
-	@Override
-	public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException, IOException, ServletException {
+## 강의에서 다루는 내용  
 
-		if (isAjax(request)) {
-			throw new IllegalStateException("Authentication is not supported");
-		}
+#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
+   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
+   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
 
-		AccountDto accountDto = AccountDtoMapper.INSTANCE.login(request.getReader());
-		if (StringUtils.isEmpty(accountDto.getUsername()) || StringUtils.isEmpty(accountDto.getPassword())) {
-			throw new IllegalArgumentException("Username or Password is empty");
-		}
+<br>
 
-		AjaxAuthenticationToken ajaxAuthenticationToken = new AjaxAuthenticationToken(accountDto.getUsername(), accountDto.getPassword());
-		return getAuthenticationManager().authenticate(ajaxAuthenticationToken);
-	}
+#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
+   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
 
-	private boolean isAjax(HttpServletRequest request) {
-		if ("XMLHttpRequest".equals(request.getHeader("X-RequestedWith"))) {
-			return true;
-		}
+<br>
 
-		return false;
-	}
-}
-```
-
-## AbstractAuthenticationToken 상속
-- UsernamePasswordAuthenticationToken 클래스의 내용을 복사하여 필요없는 부분을 제거한다.
-- AjaxAuthenticationToken클래스와 맞춰서 수정해준다.
-```java
-package coid.security.springsecurity.security.token;
-
-import java.util.Collection;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.SpringSecurityCoreVersion;
-import org.springframework.util.Assert;
-
-public class AjaxAuthenticationToken extends AbstractAuthenticationToken {
-
-	private static final long serialVersionUID = SpringSecurityCoreVersion.SERIAL_VERSION_UID;
-
-	private final Object principal;
-	private Object credentials;
-
-	/**
-	 * 인증전
-	 */
-	public AjaxAuthenticationToken(Object principal, Object credentials) {
-		super(null);
-		this.principal = principal;
-		this.credentials = credentials;
-		setAuthenticated(false);
-	}
-
-	/**
-	 * 인증후
-	 */
-	public AjaxAuthenticationToken(Object principal, Object credentials,
-								   Collection<? extends GrantedAuthority> authorities) {
-		super(authorities);
-		this.principal = principal;
-		this.credentials = credentials;
-		super.setAuthenticated(true); // must use super, as we override
-	}
-
-	public static UsernamePasswordAuthenticationToken unauthenticated(Object principal, Object credentials) {
-		return new UsernamePasswordAuthenticationToken(principal, credentials);
-	}
-
-	public static UsernamePasswordAuthenticationToken authenticated(Object principal, Object credentials,
-																	Collection<? extends GrantedAuthority> authorities) {
-		return new UsernamePasswordAuthenticationToken(principal, credentials, authorities);
-	}
-
-	@Override
-	public Object getCredentials() {
-		return this.credentials;
-	}
-
-	@Override
-	public Object getPrincipal() {
-		return this.principal;
-	}
-
-	@Override
-	public void setAuthenticated(boolean isAuthenticated) throws IllegalArgumentException {
-		Assert.isTrue(!isAuthenticated,
-					  "Cannot set this token to trusted - use constructor which takes a GrantedAuthority list instead");
-		super.setAuthenticated(false);
-	}
-
-	@Override
-	public void eraseCredentials() {
-		super.eraseCredentials();
-		this.credentials = null;
-	}
-}
-
-```
-
-## SecurityConfig 로직 추가 
-- `authenticationManagerBean()` 를 오버라이딩해준다.
-- `ajaxLoginProcessingFilter()`와 같이 ajaxLoginProcessingFilter를 생성하고 authenticationManagerBean를 주입시켜주는 메소드를 생성한다.
-- `addFilterBefore` 에 `ajaxLoginProcessingFilter()` 를 `UsernamePasswordAuthenticationFilter.class` 보다 먼저 작동해주도록 해준다.
-```java
-http.addFilterBefore(ajaxLoginProcessingFilter(), UsernamePasswordAuthenticationFilter.class);
-
-@Override
-public AuthenticationManager authenticationManagerBean() throws Exception {
-	return super.authenticationManagerBean();
-	}
-
-@Bean
-public AjaxLoginProcessingFilter ajaxLoginProcessingFilter() throws Exception {
-	AjaxLoginProcessingFilter ajaxLoginProcessingFilter = new AjaxLoginProcessingFilter();
-	ajaxLoginProcessingFilter.setAuthenticationManager(authenticationManagerBean());
-	return ajaxLoginProcessingFilter;
-	}
-```
+#### 3. 실전프로젝트
+   - 인증 기능 구현 : Form방식, Ajax인증처리 
+   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
