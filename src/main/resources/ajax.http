@@ -1,0 +1,8 @@
+POST https://httpbin.org/post
+Content-Type: application/json
+X-Requested-With: XMLHttpRequest
+
+{
+  "username": "user",
+  "password": "1111"
+}
