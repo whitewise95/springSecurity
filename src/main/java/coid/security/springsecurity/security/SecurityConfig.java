@@ -2,6 +2,8 @@ package coid.security.springsecurity.security;
 
 import coid.security.springsecurity.security.filter.AjaxLoginProcessingFilter;
 import coid.security.springsecurity.security.handler.CustomAccessDeniedHandler;
+import coid.security.springsecurity.security.handler.CustomAuthenticationFailureHandler;
+import coid.security.springsecurity.security.handler.CustomAuthenticationSuccessHandler;
 import coid.security.springsecurity.security.provider.CustomAuthenticationProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
@@ -33,8 +35,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 	private final UserDetailsService userDetailsService;
 	private final AuthenticationDetailsSource authenticationDetailsSource;
-	private final AuthenticationSuccessHandler authenticationSuccessHandler;
-	private final AuthenticationFailureHandler authenticationFailureHandler;
+	private final CustomAuthenticationSuccessHandler authenticationSuccessHandler;
+	private final CustomAuthenticationFailureHandler authenticationFailureHandler;
 
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
