@@ -1,70 +1,30 @@
-# 5-4) 인증 핸들러 - AjaxAuthenticationSuccessHandler, AjaxAuthenticationFailureHandler
+# 스프링 시큐리티 
+> Spring Boot 기반으로 개발하는 Spring Security
 
-## AuthenticationSuccessHandler 구현
-- Ajax 비동기 통신이기 때문에 리다이렉트 하는게 아니라 원하는 값을 바디에 담아 응답하는 방식이다.
-```java
-@Component
-public class AjaxAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
+## 공부 목적 
+- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
 
-	private ObjectMapper objectMapper = new ObjectMapper();
+## 개발 환경
+- JDK 11
+- Postgres
+- Intellij
+- JPA
+- Thymeleaf
+- Lombok
 
-	@Override
-	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-		Account account = (Account) authentication.getPrincipal();
+## 강의에서 다루는 내용  
 
-		response.setStatus(HttpStatus.OK.value());
-		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
+   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
+   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
 
-		objectMapper.writeValue(response.getWriter(), account);
-	}
-}
-```
+<br>
 
-## AuthenticationFailureHandler 구현
-```java
-@Component
-public class AjaxAuthenticationFailureHandler implements AuthenticationFailureHandler {
+#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
+   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
 
-	private ObjectMapper objectMapper = new ObjectMapper();
+<br>
 
-	@Override
-	public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
-		String errMsg = "Invalid Username or Password";
-
-		if (exception instanceof BadCredentialsException) {
-			errMsg = "Invalid Username or Password";
-		} else if (exception instanceof InsufficientAuthenticationException) {
-			errMsg = "Invalid Secret Key";
-		}
-
-		response.setStatus(HttpStatus.UNAUTHORIZED.value());
-		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-		objectMapper.writeValue(response.getWriter(), errMsg);
-	}
-}
-```
-
-## AjaxSecurityConfig 설정
-- ajaxAuthenticationSuccessHandler와 ajaxAuthenticationFailureHandler를 사용할 수 있게 객체를 생성하는 메소드를 각각 만든다.
-- AjaxLoginProcessingFilter를 반환하는 메소드에서 두 객체를 설정해준다.
-```java
-	@Bean
-	public AuthenticationSuccessHandler ajaxAuthenticationSuccessHandler() {
-		return new AjaxAuthenticationSuccessHandler();
-	}
-
-	@Bean
-	public AuthenticationFailureHandler ajaxAuthenticationFailureHandler() {
-		return new AjaxAuthenticationFailureHandler();
-	}
-
-    @Bean
-    public AjaxLoginProcessingFilter ajaxLoginProcessingFilter() throws Exception {
-        AjaxLoginProcessingFilter ajaxLoginProcessingFilter = new AjaxLoginProcessingFilter();
-        ajaxLoginProcessingFilter.setAuthenticationManager(authenticationManagerBean());
-        ajaxLoginProcessingFilter.setAuthenticationSuccessHandler(ajaxAuthenticationSuccessHandler());
-        ajaxLoginProcessingFilter.setAuthenticationFailureHandler(ajaxAuthenticationFailureHandler());
-        return ajaxLoginProcessingFilter;
-    }
-```
-
+#### 3. 실전프로젝트
+   - 인증 기능 구현 : Form방식, Ajax인증처리 
+   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
