@@ -1,30 +1,67 @@
-# 스프링 시큐리티 
-> Spring Boot 기반으로 개발하는 Spring Security
+# 5-5) 인증 및 인가 예외 처리 - AuthenticationEntryPoint, AccessDeniedHandler
 
-## 공부 목적 
-- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
+## AuthenticationEntryPoint
+- 익명사용자가 인증이 필요한 자원에 접근할 경우 핸들링할 수 있다.
+- `AuthenticationEntryPoint` 를 구현하고 해당 에러를 Response 할 수 있다.
+```java
+public class AjaxLoginAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-## 개발 환경
-- JDK 11
-- Postgres
-- Intellij
-- JPA
-- Thymeleaf
-- Lombok
+	@Override
+	public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
+		response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "UnAuthorized");
+	}
+}
+```
 
-## 강의에서 다루는 내용  
+## AccessDeniedHandler
+- 로그인된 회원이 권한이 필요한 자원에 접근시 권한이 맞지 않을 경우 핸들링할 수 있다.
+- `AccessDeniedHandler` 를 구현해서 해당 에러를 Response 할 수 있다.
+```java
+public class AjaxAccessDeniedHandler implements AccessDeniedHandler {
 
-#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
-   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
-   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
+	@Override
+	public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) throws IOException, ServletException {
+		response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access is denied");
+	}
+}
+```
 
-<br>
+## AjaxSecurityConfig 설정
+```java
+	http
+			.exceptionHandling()
+			.authenticationEntryPoint(new AjaxLoginAuthenticationEntryPoint())
+			.accessDeniedHandler(ajaxAccessDeniedHandler());
 
-#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
-   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
+    @Bean
+    public AccessDeniedHandler ajaxAccessDeniedHandler() {
+        return new AjaxAccessDeniedHandler();
+        }
+```
 
-<br>
+## 테스트
+```http request
+POST http://localhost:8090/api/login
+Content-Type: application/json
+X-Requested-With: XMLHttpRequest
 
-#### 3. 실전프로젝트
-   - 인증 기능 구현 : Form방식, Ajax인증처리 
-   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
+{
+  "username": "user",
+  "password": "1111"
+}
+###
+POST http://localhost:8090/api/login
+Content-Type: application/json
+X-Requested-With: XMLHttpRequest
+
+{
+"username": "manager",
+"password": "1111"
+}
+
+###
+GET http://localhost:8090/api/messages
+Content-Type: application/json
+X-Requested-With: XMLHttpRequest
+
+```
