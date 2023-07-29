@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -27,6 +28,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@Order(1)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 	private final UserDetailsService userDetailsService;
@@ -47,7 +49,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 			.exceptionHandling()  // 추가
 			.accessDeniedHandler(accessDeniedHandler()) // 추가
 			.and()
-			.addFilterBefore(ajaxLoginProcessingFilter(), UsernamePasswordAuthenticationFilter.class)
 			.formLogin()
 			.loginPage("/login")
 			.loginProcessingUrl("/login_proc") // login form의 action과 동일한 url로 유지해줘야한다.
@@ -91,12 +92,5 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	public PasswordEncoder passwordEncoder() {
 
 		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-	}
-
-	@Bean
-	public AjaxLoginProcessingFilter ajaxLoginProcessingFilter() throws Exception {
-		AjaxLoginProcessingFilter ajaxLoginProcessingFilter = new AjaxLoginProcessingFilter();
-		ajaxLoginProcessingFilter.setAuthenticationManager(authenticationManagerBean());
-		return ajaxLoginProcessingFilter;
 	}
 }
