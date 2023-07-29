@@ -1,30 +1,87 @@
-# 스프링 시큐리티 
-> Spring Boot 기반으로 개발하는 Spring Security
+# 5-3) 인증 처리자 - AjaxAuthenticationProvider
 
-## 공부 목적 
-- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
+## AuthenticationProvider 구현
+- AuthenticationProvider를 구현할 클래스 `AjaxAuthenticationProvider` 를 만들어 로직을 구성한다.
+```java
+@Service
+@RequiredArgsConstructor
+public class AjaxAuthenticationProvider implements AuthenticationProvider {
 
-## 개발 환경
-- JDK 11
-- Postgres
-- Intellij
-- JPA
-- Thymeleaf
-- Lombok
+	private final UserDetailsService userDetailsService;
+	private final PasswordEncoder passwordEncoder;
 
-## 강의에서 다루는 내용  
+	@Override
+	public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+		String username = authentication.getName();
+		String password = (String) authentication.getCredentials();
 
-#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
-   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
-   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
+		AccountContext accountContext = (AccountContext) userDetailsService.loadUserByUsername(username);
 
-<br>
+		if (!passwordEncoder.matches(password, accountContext.getAccount().getPassword())) {
+			throw new BadCredentialsException("BadCredentialsException");
+		}
 
-#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
-   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
+		return new AjaxAuthenticationToken(accountContext.getAccount(), null, accountContext.getAuthorities());
+	}
 
-<br>
+	@Override
+	public boolean supports(Class<?> authentication) {
+		return AjaxAuthenticationToken.class.isAssignableFrom(authentication);
+	}
+}
+```
 
-#### 3. 실전프로젝트
-   - 인증 기능 구현 : Form방식, Ajax인증처리 
-   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
+## AjaxSecurityConfig
+- `AjaxSecurityConfig`를 만들어 SecurityConfig에서 Ajax설정을 분리 시킨다. 
+- `@Order`를 사용해 어떤 config를 먼저 사용할지 설정한다. 
+```java
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+@Order(0)
+public class AjaxSecurityConfig extends WebSecurityConfigurerAdapter {
+
+	private final AjaxAuthenticationProvider authenticationProvider;
+
+	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+		auth.authenticationProvider(authenticationProvider);
+	}
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http
+			.antMatcher("/api/**") // 이 엔드포인트로만 동작하도록 설정
+			.authorizeRequests()
+			.anyRequest().authenticated()
+			.and()
+			.addFilterBefore(ajaxLoginProcessingFilter(), UsernamePasswordAuthenticationFilter.class);
+		http.csrf().disable();
+	}
+
+	@Override
+	public AuthenticationManager authenticationManagerBean() throws Exception {
+		return super.authenticationManagerBean();
+	}
+
+	@Bean
+	public AjaxLoginProcessingFilter ajaxLoginProcessingFilter() throws Exception {
+		AjaxLoginProcessingFilter ajaxLoginProcessingFilter = new AjaxLoginProcessingFilter();
+		ajaxLoginProcessingFilter.setAuthenticationManager(authenticationManagerBean());
+		return ajaxLoginProcessingFilter;
+	}
+}
+```
+
+## 테스트
+- `.http` 파일을 만들어 테스트를 진행한다.
+```http request
+POST http://localhost:8090/api/login
+Content-Type: application/json
+X-Requested-With: XMLHttpRequest
+
+{
+  "username": "user",
+  "password": "1111"
+}
+```
