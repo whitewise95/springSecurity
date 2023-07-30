@@ -15,7 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 @Controller
 public class LoginController {
 
-    @GetMapping("/login")
+    @GetMapping(value = {"/login", "/api/login"})
     public String login(@RequestParam(value = "error", required = false) Boolean error,
                         @RequestParam(value = "exception", required = false) String exception,
                         Model model) {
@@ -36,7 +36,7 @@ public class LoginController {
         return "redirect:/login";
     }
 
-    @GetMapping("/denied")
+    @GetMapping(value = {"/denied", "/api/denied"})
     public String accessDenied(@RequestParam(value = "exception", required = false) String exception,
                                Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

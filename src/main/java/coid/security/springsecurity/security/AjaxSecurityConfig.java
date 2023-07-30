@@ -19,6 +19,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 @EnableWebSecurity
@@ -49,6 +50,7 @@ public class AjaxSecurityConfig extends WebSecurityConfigurerAdapter {
 			.antMatcher("/api/**") // 이 엔드포인트로만 동작하도록 설정
 			.authorizeRequests()
 			.antMatchers("/api/messages").hasRole("MANAGER")
+			.antMatchers("/api/login").permitAll()
 			.anyRequest().authenticated()
 			.and()
 			.addFilterBefore(ajaxLoginProcessingFilter(), UsernamePasswordAuthenticationFilter.class);
@@ -57,8 +59,6 @@ public class AjaxSecurityConfig extends WebSecurityConfigurerAdapter {
 			.exceptionHandling()
 			.authenticationEntryPoint(new AjaxLoginAuthenticationEntryPoint())
 			.accessDeniedHandler(ajaxAccessDeniedHandler());
-
-		http.csrf().disable();
 	}
 
 	@Bean
