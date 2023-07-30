@@ -1,6 +1,5 @@
 package coid.security.springsecurity.security;
 
-import coid.security.springsecurity.security.filter.AjaxLoginProcessingFilter;
 import coid.security.springsecurity.security.handler.CustomAccessDeniedHandler;
 import coid.security.springsecurity.security.handler.CustomAuthenticationFailureHandler;
 import coid.security.springsecurity.security.handler.CustomAuthenticationSuccessHandler;
@@ -22,9 +21,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.access.AccessDeniedHandler;
-import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 
 @Configuration
@@ -44,8 +40,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 			.authorizeRequests()
 			.antMatchers("/", "/users", "/login*").permitAll()
 			.antMatchers("/mypage").hasRole("USER")
-			.antMatchers("/messages").hasRole("MANAGER, USER")
-			.antMatchers("/config").hasRole("ADMIN, MANAGER, USER")
+			.antMatchers("/messages").hasRole("MANAGER")
+			.antMatchers("/config").hasRole("ADMIN")
 			.anyRequest().authenticated()
 			.and()
 			.exceptionHandling()  // 추가
@@ -61,7 +57,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 			.permitAll()
 		;
 
-		http.csrf().disable();
+		// http.csrf().disable();
 	}
 
 	private AccessDeniedHandler accessDeniedHandler() { // 추가
