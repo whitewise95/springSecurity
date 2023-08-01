@@ -3,6 +3,8 @@ package coid.security.springsecurity.dto;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class AccountDto {
@@ -12,5 +14,5 @@ public class AccountDto {
 	private String password;
 	private String email;
 	private String age;
-	private String role;
+	private List<String> roles;
 }
