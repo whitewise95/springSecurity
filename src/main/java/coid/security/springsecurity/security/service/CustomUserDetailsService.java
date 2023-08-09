@@ -4,6 +4,8 @@ import coid.security.springsecurity.dmain.Account;
 import coid.security.springsecurity.repository.UserRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,13 +26,17 @@ public class CustomUserDetailsService implements UserDetailsService {
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 
 		Account account = userRepository.findByUsername(username);
-
 		if (account == null) {
-			throw new UsernameNotFoundException("UsernameNotFoundException");
+			if (userRepository.countByUsername(username) == 0) {
+				throw new UsernameNotFoundException("No user found with username: " + username);
+			}
 		}
+		List<GrantedAuthority> collect = account.getUserRoles()
+				.stream()
+				.map(userRole -> userRole.getRoleName())
+				.collect(Collectors.toSet())
+				.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
 
-		List<GrantedAuthority> roles = new ArrayList<>();  // DB에서 조회된 회원 ROLE을 담는 리스트
-		roles.add(new SimpleGrantedAuthority(account.getRole()));
-		return new AccountContext(account, roles);
+		return new AccountContext(account, collect);
 	}
 }
