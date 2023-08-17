@@ -3,12 +3,19 @@ package coid.security.springsecurity.security;
 import coid.security.springsecurity.security.handler.CustomAccessDeniedHandler;
 import coid.security.springsecurity.security.handler.CustomAuthenticationFailureHandler;
 import coid.security.springsecurity.security.handler.CustomAuthenticationSuccessHandler;
+import coid.security.springsecurity.security.metadatasource.UrlFilterInvocationSecurityMetadatsSource;
 import coid.security.springsecurity.security.provider.CustomAuthenticationProvider;
+import java.util.Arrays;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.access.AccessDecisionManager;
+import org.springframework.security.access.AccessDecisionVoter;
+import org.springframework.security.access.vote.AffirmativeBased;
+import org.springframework.security.access.vote.RoleVoter;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -21,6 +28,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.intercept.FilterInvocationSecurityMetadataSource;
+import org.springframework.security.web.access.intercept.FilterSecurityInterceptor;
 
 
 @Configuration
@@ -54,10 +63,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 			.defaultSuccessUrl("/")
 			.successHandler(authenticationSuccessHandler)
 			.failureHandler(authenticationFailureHandler)
-			.permitAll()
-		;
+			.permitAll();
 
-		// http.csrf().disable();
+		http
+			.addFilterBefore(customFilterSecurityInterceptor(), FilterSecurityInterceptor.class);
 	}
 
 	private AccessDeniedHandler accessDeniedHandler() { // 추가
@@ -88,7 +97,31 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
-
 		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+	}
+
+	@Bean
+	public FilterSecurityInterceptor customFilterSecurityInterceptor() throws Exception {
+		FilterSecurityInterceptor filterSecurityInterceptor = new FilterSecurityInterceptor();
+		filterSecurityInterceptor.setSecurityMetadataSource(urlFilterInvocationSecurityMetadatasource());
+		filterSecurityInterceptor.setAccessDecisionManager(affirmativeBased());
+		filterSecurityInterceptor.setAuthenticationManager(authenticationManagerBean());
+		return filterSecurityInterceptor;
+	}
+
+	@Bean
+	public AccessDecisionManager affirmativeBased() {
+		AffirmativeBased affirmativeBased = new AffirmativeBased(getAccessDecistionVoters());
+		return affirmativeBased;
+	}
+
+	@Bean
+	public List<AccessDecisionVoter<?>> getAccessDecistionVoters() {
+		return Arrays.asList(new RoleVoter());
+	}
+
+	@Bean
+	public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() {
+		return new UrlFilterInvocationSecurityMetadatsSource();
 	}
 }
