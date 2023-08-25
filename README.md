@@ -1,218 +1,101 @@
-# 6-5) 웹 기반 인가처리 DB 연동 - FilterInvocationSecurityMetadataSource (2)
+# 6-6) 웹 기반 인가처리 실시간 반영하기
+> 권한을 수정하면 해당 권한이 바로 반영이 가능해야한다.
 
-## SecurityResourceService 생성
-> FilterInvocationSecurityMetadataSource 구현 클래스에서 필요한 LinkedHashMap<RequestMatcher, List<ConfigAttribute>> 객체를 생성하는 로직을 SecurityResourceService에서 처리한다.
+
+## UrlFilterInvocationSecurityMetaDatsSource에 reload() 추가
 ```java
-public class SecurityResourceService {
 
-    private ResourcesRepository resourcesRepository;
+public class UrlFilterInvocationSecurityMetaDatsSource implements FilterInvocationSecurityMetadataSource {
 
-    public SecurityResourceService(ResourcesRepository resourcesRepository) {
-        this.resourcesRepository = resourcesRepository;
-    }
+	private LinkedHashMap<RequestMatcher, List<ConfigAttribute>> requestMap = new LinkedHashMap<>();
 
-    public LinkedHashMap<RequestMatcher, List<ConfigAttribute>> getResourceList() {
-        LinkedHashMap<RequestMatcher, List<ConfigAttribute>> result = new LinkedHashMap<>();
-
-        List<Resources> resourcesList = resourcesRepository.findAllResources();
-        resourcesList.forEach(x -> {
-            List<ConfigAttribute> configAttributeList = new ArrayList<>();
-            x.getRoleSet().forEach(role -> configAttributeList.add(new SecurityConfig(role.getRoleName())));
-            result.put(new AntPathRequestMatcher(x.getResourceName()), configAttributeList);
-        });
-
-        return result;
-    }
-}
-```
-
-<br>
-<br>
+	private SecurityResourceService securityResourceService;
 
 
-### AppConfig 생성 
-> SecurityResourceService를 Bean으로 등록하기위해 `@Configuration` 를 사용할 AppConfig.java 생성
-```java
-@Configuration
-public class AppConfig {
-
-    @Bean
-    public SecurityResourceService securityResourceService(ResourcesRepository resourcesRepository){
-        SecurityResourceService securityResourceService = new SecurityResourceService(resourcesRepository);
-        return securityResourceService;
-    }
-}
-```
-
-
-<br>
-<br>
-
-
-
-## UrlResourceMapFactoryBean 클래스 생성
-> 해당 클래스는  FactoryBean<LinkedHashMap<RequestMatcher, List<ConfigAttribute>>> 를 구현하기 위해 생성
-
-```java
-public class UrlResourceMapFactoryBean implements FactoryBean<LinkedHashMap<RequestMatcher, List<ConfigAttribute>>> {
-
-    private SecurityResourceService securityResourceService;
-    private LinkedHashMap<RequestMatcher, List<ConfigAttribute>> resourceMap;
-
-    public void setSecurityResourceService(SecurityResourceService securityResourceService) {
-        this.securityResourceService = securityResourceService;
-    }
-
-    @Override
-    public LinkedHashMap<RequestMatcher, List<ConfigAttribute>> getObject() throws Exception {
-        if (resourceMap == null) {
-            init();
-        }
-        return resourceMap;
-    }
-
-    private void init(){
-        resourceMap = securityResourceService.getResourceList();
-    }
-
-    @Override
-    public Class<?> getObjectType() {
-        return LinkedHashMap.class;
-    }
-
-    @Override
-    public boolean isSingleton() {
-        return FactoryBean.super.isSingleton();
-    }
-}
-```
-
-<br>
-<br>
-
-
-
-## SecurityConfig에 로직 추가
-```java
-	@Bean
-	public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() throws Exception {
-		return new UrlFilterInvocationSecurityMetadatsSource(urlResourceMapFactoryBean().getObject());
-	}
-
-	private UrlResourceMapFactoryBean urlResourceMapFactoryBean() {
-		UrlResourceMapFactoryBean resourceMapFactoryBean = new UrlResourceMapFactoryBean();
-		resourceMapFactoryBean.setSecurityResourceService(securityResourceService);
-		return resourceMapFactoryBean;
-	}
-```
-
-<br>
-
-
-- 전체로직
-```java
-@Configuration
-@EnableWebSecurity
-@RequiredArgsConstructor
-@Order(1)
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
-
-	private final UserDetailsService userDetailsService;
-	private final AuthenticationDetailsSource authenticationDetailsSource;
-	private final CustomAuthenticationSuccessHandler authenticationSuccessHandler;
-	private final CustomAuthenticationFailureHandler authenticationFailureHandler;
-	private final SecurityResourceService securityResourceService;
-
-
-	@Override
-	protected void configure(HttpSecurity http) throws Exception {
-		http
-			.authorizeRequests()
-			.antMatchers("/", "/users", "/login*").permitAll()
-			.antMatchers("/mypage").hasRole("USER")
-			.antMatchers("/messages").hasRole("MANAGER")
-			.antMatchers("/config").hasRole("ADMIN")
-			.anyRequest().authenticated()
-			.and()
-			.exceptionHandling()  // 추가
-			.accessDeniedHandler(accessDeniedHandler()) // 추가
-			.and()
-			.formLogin()
-			.loginPage("/login")
-			.loginProcessingUrl("/login_proc") // login form의 action과 동일한 url로 유지해줘야한다.
-			.authenticationDetailsSource(authenticationDetailsSource)
-			.defaultSuccessUrl("/")
-			.successHandler(authenticationSuccessHandler)
-			.failureHandler(authenticationFailureHandler)
-			.permitAll();
-
-		http
-			.addFilterBefore(customFilterSecurityInterceptor(), FilterSecurityInterceptor.class);
-	}
-
-	private AccessDeniedHandler accessDeniedHandler() { // 추가
-		CustomAccessDeniedHandler deniedHandler = new CustomAccessDeniedHandler();
-		deniedHandler.setErrorPage("/denied");
-		return deniedHandler;
+	public UrlFilterInvocationSecurityMetaDatsSource(LinkedHashMap<RequestMatcher, List<ConfigAttribute>> requestMap, SecurityResourceService securityResourceService) {
+		this.securityResourceService = securityResourceService;
+		this.requestMap = requestMap;
 	}
 
 	@Override
-	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-		auth.authenticationProvider(authenticationProvider());
-	}
+	public Collection<ConfigAttribute> getAttributes(Object object) throws IllegalArgumentException {
 
-	@Bean
-	public AuthenticationProvider authenticationProvider() {
-		return new CustomAuthenticationProvider(userDetailsService, passwordEncoder());
+		HttpServletRequest request = ((FilterInvocation) object).getRequest();
+
+		if (requestMap != null) {
+			for (Map.Entry<RequestMatcher, List<ConfigAttribute>> entry : requestMap.entrySet()) {
+				RequestMatcher matcher = entry.getKey();
+				if (matcher.matches(request)) {
+					return entry.getValue();
+				}
+			}
+		}
+
+		return null;
 	}
 
 	@Override
-	public void configure(WebSecurity web) {
-		web.ignoring().requestMatchers(PathRequest.toStaticResources().atCommonLocations());
+	public Collection<ConfigAttribute> getAllConfigAttributes() {
+		Set<ConfigAttribute> allAttributes = new HashSet<>();
+
+		for (Map.Entry<RequestMatcher, List<ConfigAttribute>> entry : requestMap.entrySet()) {
+			allAttributes.addAll(entry.getValue());
+		}
+
+		return allAttributes;
 	}
 
 	@Override
-	public AuthenticationManager authenticationManagerBean() throws Exception {
-		return super.authenticationManagerBean();
+	public boolean supports(Class<?> clazz) {
+		return FilterInvocation.class.isAssignableFrom(clazz);
 	}
 
-	@Bean
-	public PasswordEncoder passwordEncoder() {
-		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-	}
+	public void reload() {
+		LinkedHashMap<RequestMatcher, List<ConfigAttribute>> resourceList = securityResourceService.getResourceList();
+		Iterator<Map.Entry<RequestMatcher, List<ConfigAttribute>>> iterator = resourceList.entrySet().iterator();
+		requestMap.clear();
 
-	@Bean
-	public FilterSecurityInterceptor customFilterSecurityInterceptor() throws Exception {
-		FilterSecurityInterceptor filterSecurityInterceptor = new FilterSecurityInterceptor();
-		filterSecurityInterceptor.setSecurityMetadataSource(urlFilterInvocationSecurityMetadatasource());
-		filterSecurityInterceptor.setAccessDecisionManager(affirmativeBased());
-		filterSecurityInterceptor.setAuthenticationManager(authenticationManagerBean());
-		return filterSecurityInterceptor;
-	}
+		while (iterator.hasNext()) {
+			Map.Entry<RequestMatcher, List<ConfigAttribute>> entry = iterator.next();
+			requestMap.put(entry.getKey(), entry.getValue());
+		}
 
-	@Bean
-	public AccessDecisionManager affirmativeBased() {
-		AffirmativeBased affirmativeBased = new AffirmativeBased(getAccessDecistionVoters());
-		return affirmativeBased;
-	}
-
-	@Bean
-	public List<AccessDecisionVoter<?>> getAccessDecistionVoters() {
-		return Arrays.asList(new RoleVoter());
-	}
-
-	@Bean
-	public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() throws Exception {
-		return new UrlFilterInvocationSecurityMetadatsSource(urlResourceMapFactoryBean().getObject());
-	}
-
-	private UrlResourceMapFactoryBean urlResourceMapFactoryBean() {
-		UrlResourceMapFactoryBean resourceMapFactoryBean = new UrlResourceMapFactoryBean();
-		resourceMapFactoryBean.setSecurityResourceService(securityResourceService);
-		return resourceMapFactoryBean;
 	}
 }
 ```
 
+## SecurityConfig 수정
+> 생성자 인자로 securityResourceService를 추가한다.
+```java
+	@Bean
+    public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() throws Exception {
+	    return new UrlFilterInvocationSecurityMetaDatsSource(urlResourceMapFactoryBean().getObject(), securityResourceService);
+	}
+```
 
+## ResourcesController의 create 메소드와 remove 메소드에 reload 메소드를 추가한다.
+```java
+    private final UrlFilterInvocationSecurityMetaDatsSource urlFilterInvocationSecurityMetaDatsSource;
 
+    @PostMapping(value = "/admin/resources")
+    public String createResources(ResourcesDto resourcesDto) throws Exception {
+        ModelMapper modelMapper = new ModelMapper();
+        Role role = roleRepository.findByRoleName(resourcesDto.getRoleName());
+        Set<Role> roles = new HashSet<>();
+        roles.add(role);
+        Resources resources = modelMapper.map(resourcesDto, Resources.class);
+        resources.setRoleSet(roles);
+    
+        resourcesService.createResources(resources);
+        urlFilterInvocationSecurityMetaDatsSource.reload();
+        return "redirect:/admin/resources";
+	}
+
+    @GetMapping(value = "/admin/resources/delete/{id}")
+    public String removeResources(@PathVariable String id, Model model) throws Exception {
+        Resources resources = resourcesService.getResources(Long.valueOf(id));
+        resourcesService.deleteResources(Long.valueOf(id));
+        urlFilterInvocationSecurityMetaDatsSource.reload();
+        return "redirect:/admin/resources";
+    }
+```

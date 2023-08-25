@@ -5,11 +5,13 @@ import coid.security.springsecurity.dmain.Resources;
 import coid.security.springsecurity.dmain.Role;
 import coid.security.springsecurity.dto.ResourcesDto;
 import coid.security.springsecurity.repository.RoleRepository;
+import coid.security.springsecurity.security.metadatasource.UrlFilterInvocationSecurityMetaDatsSource;
 import coid.security.springsecurity.service.ResourcesService;
 import coid.security.springsecurity.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,6 +28,9 @@ public class ResourcesController {
     private final ResourcesService resourcesService;
     private final RoleRepository roleRepository;
     private final RoleService roleService;
+
+
+    private final UrlFilterInvocationSecurityMetaDatsSource urlFilterInvocationSecurityMetaDatsSource;
 
     @GetMapping(value = "/admin/resources")
     public String getResources(Model model) throws Exception {
@@ -47,7 +52,7 @@ public class ResourcesController {
         resources.setRoleSet(roles);
 
         resourcesService.createResources(resources);
-
+        urlFilterInvocationSecurityMetaDatsSource.reload();
         return "redirect:/admin/resources";
     }
 
@@ -85,7 +90,7 @@ public class ResourcesController {
 
         Resources resources = resourcesService.getResources(Long.valueOf(id));
         resourcesService.deleteResources(Long.valueOf(id));
-
+        urlFilterInvocationSecurityMetaDatsSource.reload();
         return "redirect:/admin/resources";
     }
 }
