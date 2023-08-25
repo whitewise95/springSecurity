@@ -1,34 +1,35 @@
 package coid.security.springsecurity.security.metadatasource;
 
-import java.util.Arrays;
+import coid.security.springsecurity.service.SecurityResourceService;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
 import org.springframework.security.access.ConfigAttribute;
-import org.springframework.security.access.SecurityConfig;
 import org.springframework.security.web.FilterInvocation;
 import org.springframework.security.web.access.intercept.FilterInvocationSecurityMetadataSource;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
-public class UrlFilterInvocationSecurityMetadatsSource implements FilterInvocationSecurityMetadataSource {
+public class UrlFilterInvocationSecurityMetaDatsSource implements FilterInvocationSecurityMetadataSource {
 
 	private LinkedHashMap<RequestMatcher, List<ConfigAttribute>> requestMap = new LinkedHashMap<>();
 
-	public UrlFilterInvocationSecurityMetadatsSource(LinkedHashMap<RequestMatcher, List<ConfigAttribute>> requestMap) {
+	private SecurityResourceService securityResourceService;
+
+
+	public UrlFilterInvocationSecurityMetaDatsSource(LinkedHashMap<RequestMatcher, List<ConfigAttribute>> requestMap, SecurityResourceService securityResourceService) {
+		this.securityResourceService = securityResourceService;
 		this.requestMap = requestMap;
 	}
 
 	@Override
 	public Collection<ConfigAttribute> getAttributes(Object object) throws IllegalArgumentException {
 
- 		HttpServletRequest request = ((FilterInvocation) object).getRequest();
-
-		requestMap.put(new AntPathRequestMatcher("/mypage"), Arrays.asList(new SecurityConfig("ROLE_USER")));
+		HttpServletRequest request = ((FilterInvocation) object).getRequest();
 
 		if (requestMap != null) {
 			for (Map.Entry<RequestMatcher, List<ConfigAttribute>> entry : requestMap.entrySet()) {
@@ -56,5 +57,17 @@ public class UrlFilterInvocationSecurityMetadatsSource implements FilterInvocati
 	@Override
 	public boolean supports(Class<?> clazz) {
 		return FilterInvocation.class.isAssignableFrom(clazz);
+	}
+
+	public void reload() {
+		LinkedHashMap<RequestMatcher, List<ConfigAttribute>> resourceList = securityResourceService.getResourceList();
+		Iterator<Map.Entry<RequestMatcher, List<ConfigAttribute>>> iterator = resourceList.entrySet().iterator();
+		requestMap.clear();
+
+		while (iterator.hasNext()) {
+			Map.Entry<RequestMatcher, List<ConfigAttribute>> entry = iterator.next();
+			requestMap.put(entry.getKey(), entry.getValue());
+		}
+
 	}
 }

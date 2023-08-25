@@ -4,7 +4,7 @@ import coid.security.springsecurity.security.factory.UrlResourceMapFactoryBean;
 import coid.security.springsecurity.security.handler.CustomAccessDeniedHandler;
 import coid.security.springsecurity.security.handler.CustomAuthenticationFailureHandler;
 import coid.security.springsecurity.security.handler.CustomAuthenticationSuccessHandler;
-import coid.security.springsecurity.security.metadatasource.UrlFilterInvocationSecurityMetadatsSource;
+import coid.security.springsecurity.security.metadatasource.UrlFilterInvocationSecurityMetaDatsSource;
 import coid.security.springsecurity.security.provider.CustomAuthenticationProvider;
 import java.util.Arrays;
 import java.util.List;
@@ -22,7 +22,6 @@ import org.springframework.security.access.vote.RoleVoter;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.config.annotation.AbstractSecurityBuilder;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
@@ -53,10 +52,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	protected void configure(HttpSecurity http) throws Exception {
 		http
 			.authorizeRequests()
-			.antMatchers("/", "/users", "/login*").permitAll()
-			.antMatchers("/mypage").hasRole("USER")
-			.antMatchers("/messages").hasRole("MANAGER")
-			.antMatchers("/config").hasRole("ADMIN")
 			.anyRequest().authenticated()
 			.and()
 			.exceptionHandling()  // 추가
@@ -128,7 +123,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 	@Bean
 	public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() throws Exception {
-		return new UrlFilterInvocationSecurityMetadatsSource(urlResourceMapFactoryBean().getObject());
+		return new UrlFilterInvocationSecurityMetaDatsSource(urlResourceMapFactoryBean().getObject(), securityResourceService);
 	}
 
 	private UrlResourceMapFactoryBean urlResourceMapFactoryBean() {
