@@ -1,30 +1,218 @@
-# 스프링 시큐리티 
-> Spring Boot 기반으로 개발하는 Spring Security
+# 6-5) 웹 기반 인가처리 DB 연동 - FilterInvocationSecurityMetadataSource (2)
 
-## 공부 목적 
-- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
+## SecurityResourceService 생성
+> FilterInvocationSecurityMetadataSource 구현 클래스에서 필요한 LinkedHashMap<RequestMatcher, List<ConfigAttribute>> 객체를 생성하는 로직을 SecurityResourceService에서 처리한다.
+```java
+public class SecurityResourceService {
 
-## 개발 환경
-- JDK 11
-- Postgres
-- Intellij
-- JPA
-- Thymeleaf
-- Lombok
+    private ResourcesRepository resourcesRepository;
 
-## 강의에서 다루는 내용  
+    public SecurityResourceService(ResourcesRepository resourcesRepository) {
+        this.resourcesRepository = resourcesRepository;
+    }
 
-#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
-   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
-   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
+    public LinkedHashMap<RequestMatcher, List<ConfigAttribute>> getResourceList() {
+        LinkedHashMap<RequestMatcher, List<ConfigAttribute>> result = new LinkedHashMap<>();
+
+        List<Resources> resourcesList = resourcesRepository.findAllResources();
+        resourcesList.forEach(x -> {
+            List<ConfigAttribute> configAttributeList = new ArrayList<>();
+            x.getRoleSet().forEach(role -> configAttributeList.add(new SecurityConfig(role.getRoleName())));
+            result.put(new AntPathRequestMatcher(x.getResourceName()), configAttributeList);
+        });
+
+        return result;
+    }
+}
+```
+
+<br>
+<br>
+
+
+### AppConfig 생성 
+> SecurityResourceService를 Bean으로 등록하기위해 `@Configuration` 를 사용할 AppConfig.java 생성
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public SecurityResourceService securityResourceService(ResourcesRepository resourcesRepository){
+        SecurityResourceService securityResourceService = new SecurityResourceService(resourcesRepository);
+        return securityResourceService;
+    }
+}
+```
+
+
+<br>
+<br>
+
+
+
+## UrlResourceMapFactoryBean 클래스 생성
+> 해당 클래스는  FactoryBean<LinkedHashMap<RequestMatcher, List<ConfigAttribute>>> 를 구현하기 위해 생성
+
+```java
+public class UrlResourceMapFactoryBean implements FactoryBean<LinkedHashMap<RequestMatcher, List<ConfigAttribute>>> {
+
+    private SecurityResourceService securityResourceService;
+    private LinkedHashMap<RequestMatcher, List<ConfigAttribute>> resourceMap;
+
+    public void setSecurityResourceService(SecurityResourceService securityResourceService) {
+        this.securityResourceService = securityResourceService;
+    }
+
+    @Override
+    public LinkedHashMap<RequestMatcher, List<ConfigAttribute>> getObject() throws Exception {
+        if (resourceMap == null) {
+            init();
+        }
+        return resourceMap;
+    }
+
+    private void init(){
+        resourceMap = securityResourceService.getResourceList();
+    }
+
+    @Override
+    public Class<?> getObjectType() {
+        return LinkedHashMap.class;
+    }
+
+    @Override
+    public boolean isSingleton() {
+        return FactoryBean.super.isSingleton();
+    }
+}
+```
+
+<br>
+<br>
+
+
+
+## SecurityConfig에 로직 추가
+```java
+	@Bean
+	public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() throws Exception {
+		return new UrlFilterInvocationSecurityMetadatsSource(urlResourceMapFactoryBean().getObject());
+	}
+
+	private UrlResourceMapFactoryBean urlResourceMapFactoryBean() {
+		UrlResourceMapFactoryBean resourceMapFactoryBean = new UrlResourceMapFactoryBean();
+		resourceMapFactoryBean.setSecurityResourceService(securityResourceService);
+		return resourceMapFactoryBean;
+	}
+```
 
 <br>
 
-#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
-   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
 
-<br>
+- 전체로직
+```java
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+@Order(1)
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
-#### 3. 실전프로젝트
-   - 인증 기능 구현 : Form방식, Ajax인증처리 
-   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
+	private final UserDetailsService userDetailsService;
+	private final AuthenticationDetailsSource authenticationDetailsSource;
+	private final CustomAuthenticationSuccessHandler authenticationSuccessHandler;
+	private final CustomAuthenticationFailureHandler authenticationFailureHandler;
+	private final SecurityResourceService securityResourceService;
+
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http
+			.authorizeRequests()
+			.antMatchers("/", "/users", "/login*").permitAll()
+			.antMatchers("/mypage").hasRole("USER")
+			.antMatchers("/messages").hasRole("MANAGER")
+			.antMatchers("/config").hasRole("ADMIN")
+			.anyRequest().authenticated()
+			.and()
+			.exceptionHandling()  // 추가
+			.accessDeniedHandler(accessDeniedHandler()) // 추가
+			.and()
+			.formLogin()
+			.loginPage("/login")
+			.loginProcessingUrl("/login_proc") // login form의 action과 동일한 url로 유지해줘야한다.
+			.authenticationDetailsSource(authenticationDetailsSource)
+			.defaultSuccessUrl("/")
+			.successHandler(authenticationSuccessHandler)
+			.failureHandler(authenticationFailureHandler)
+			.permitAll();
+
+		http
+			.addFilterBefore(customFilterSecurityInterceptor(), FilterSecurityInterceptor.class);
+	}
+
+	private AccessDeniedHandler accessDeniedHandler() { // 추가
+		CustomAccessDeniedHandler deniedHandler = new CustomAccessDeniedHandler();
+		deniedHandler.setErrorPage("/denied");
+		return deniedHandler;
+	}
+
+	@Override
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+		auth.authenticationProvider(authenticationProvider());
+	}
+
+	@Bean
+	public AuthenticationProvider authenticationProvider() {
+		return new CustomAuthenticationProvider(userDetailsService, passwordEncoder());
+	}
+
+	@Override
+	public void configure(WebSecurity web) {
+		web.ignoring().requestMatchers(PathRequest.toStaticResources().atCommonLocations());
+	}
+
+	@Override
+	public AuthenticationManager authenticationManagerBean() throws Exception {
+		return super.authenticationManagerBean();
+	}
+
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+	}
+
+	@Bean
+	public FilterSecurityInterceptor customFilterSecurityInterceptor() throws Exception {
+		FilterSecurityInterceptor filterSecurityInterceptor = new FilterSecurityInterceptor();
+		filterSecurityInterceptor.setSecurityMetadataSource(urlFilterInvocationSecurityMetadatasource());
+		filterSecurityInterceptor.setAccessDecisionManager(affirmativeBased());
+		filterSecurityInterceptor.setAuthenticationManager(authenticationManagerBean());
+		return filterSecurityInterceptor;
+	}
+
+	@Bean
+	public AccessDecisionManager affirmativeBased() {
+		AffirmativeBased affirmativeBased = new AffirmativeBased(getAccessDecistionVoters());
+		return affirmativeBased;
+	}
+
+	@Bean
+	public List<AccessDecisionVoter<?>> getAccessDecistionVoters() {
+		return Arrays.asList(new RoleVoter());
+	}
+
+	@Bean
+	public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() throws Exception {
+		return new UrlFilterInvocationSecurityMetadatsSource(urlResourceMapFactoryBean().getObject());
+	}
+
+	private UrlResourceMapFactoryBean urlResourceMapFactoryBean() {
+		UrlResourceMapFactoryBean resourceMapFactoryBean = new UrlResourceMapFactoryBean();
+		resourceMapFactoryBean.setSecurityResourceService(securityResourceService);
+		return resourceMapFactoryBean;
+	}
+}
+```
+
+
+

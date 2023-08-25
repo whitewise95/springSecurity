@@ -1,5 +1,6 @@
 package coid.security.springsecurity.security;
 
+import coid.security.springsecurity.security.factory.UrlResourceMapFactoryBean;
 import coid.security.springsecurity.security.handler.CustomAccessDeniedHandler;
 import coid.security.springsecurity.security.handler.CustomAuthenticationFailureHandler;
 import coid.security.springsecurity.security.handler.CustomAuthenticationSuccessHandler;
@@ -7,6 +8,8 @@ import coid.security.springsecurity.security.metadatasource.UrlFilterInvocationS
 import coid.security.springsecurity.security.provider.CustomAuthenticationProvider;
 import java.util.Arrays;
 import java.util.List;
+
+import coid.security.springsecurity.service.SecurityResourceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +22,7 @@ import org.springframework.security.access.vote.RoleVoter;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.config.annotation.AbstractSecurityBuilder;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
@@ -42,6 +46,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	private final AuthenticationDetailsSource authenticationDetailsSource;
 	private final CustomAuthenticationSuccessHandler authenticationSuccessHandler;
 	private final CustomAuthenticationFailureHandler authenticationFailureHandler;
+	private final SecurityResourceService securityResourceService;
+
 
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
@@ -121,7 +127,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	}
 
 	@Bean
-	public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() {
-		return new UrlFilterInvocationSecurityMetadatsSource();
+	public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() throws Exception {
+		return new UrlFilterInvocationSecurityMetadatsSource(urlResourceMapFactoryBean().getObject());
+	}
+
+	private UrlResourceMapFactoryBean urlResourceMapFactoryBean() {
+		UrlResourceMapFactoryBean resourceMapFactoryBean = new UrlResourceMapFactoryBean();
+		resourceMapFactoryBean.setSecurityResourceService(securityResourceService);
+		return resourceMapFactoryBean;
 	}
 }
