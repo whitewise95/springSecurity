@@ -1,4 +1,4 @@
-package coid.security.springsecurity.service;
+package coid.security.springsecurity.security.service;
 
 import coid.security.springsecurity.dmain.Resources;
 import coid.security.springsecurity.repository.ResourcesRepository;
