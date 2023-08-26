@@ -1,101 +1,30 @@
-# 6-6) 웹 기반 인가처리 실시간 반영하기
-> 권한을 수정하면 해당 권한이 바로 반영이 가능해야한다.
+# 스프링 시큐리티 
+> Spring Boot 기반으로 개발하는 Spring Security
 
+## 공부 목적 
+- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
 
-## UrlFilterInvocationSecurityMetaDatsSource에 reload() 추가
-```java
+## 개발 환경
+- JDK 11
+- Postgres
+- Intellij
+- JPA
+- Thymeleaf
+- Lombok
 
-public class UrlFilterInvocationSecurityMetaDatsSource implements FilterInvocationSecurityMetadataSource {
+## 강의에서 다루는 내용  
 
-	private LinkedHashMap<RequestMatcher, List<ConfigAttribute>> requestMap = new LinkedHashMap<>();
+#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
+   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
+   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
 
-	private SecurityResourceService securityResourceService;
+<br>
 
+#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
+   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
 
-	public UrlFilterInvocationSecurityMetaDatsSource(LinkedHashMap<RequestMatcher, List<ConfigAttribute>> requestMap, SecurityResourceService securityResourceService) {
-		this.securityResourceService = securityResourceService;
-		this.requestMap = requestMap;
-	}
+<br>
 
-	@Override
-	public Collection<ConfigAttribute> getAttributes(Object object) throws IllegalArgumentException {
-
-		HttpServletRequest request = ((FilterInvocation) object).getRequest();
-
-		if (requestMap != null) {
-			for (Map.Entry<RequestMatcher, List<ConfigAttribute>> entry : requestMap.entrySet()) {
-				RequestMatcher matcher = entry.getKey();
-				if (matcher.matches(request)) {
-					return entry.getValue();
-				}
-			}
-		}
-
-		return null;
-	}
-
-	@Override
-	public Collection<ConfigAttribute> getAllConfigAttributes() {
-		Set<ConfigAttribute> allAttributes = new HashSet<>();
-
-		for (Map.Entry<RequestMatcher, List<ConfigAttribute>> entry : requestMap.entrySet()) {
-			allAttributes.addAll(entry.getValue());
-		}
-
-		return allAttributes;
-	}
-
-	@Override
-	public boolean supports(Class<?> clazz) {
-		return FilterInvocation.class.isAssignableFrom(clazz);
-	}
-
-	public void reload() {
-		LinkedHashMap<RequestMatcher, List<ConfigAttribute>> resourceList = securityResourceService.getResourceList();
-		Iterator<Map.Entry<RequestMatcher, List<ConfigAttribute>>> iterator = resourceList.entrySet().iterator();
-		requestMap.clear();
-
-		while (iterator.hasNext()) {
-			Map.Entry<RequestMatcher, List<ConfigAttribute>> entry = iterator.next();
-			requestMap.put(entry.getKey(), entry.getValue());
-		}
-
-	}
-}
-```
-
-## SecurityConfig 수정
-> 생성자 인자로 securityResourceService를 추가한다.
-```java
-	@Bean
-    public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() throws Exception {
-	    return new UrlFilterInvocationSecurityMetaDatsSource(urlResourceMapFactoryBean().getObject(), securityResourceService);
-	}
-```
-
-## ResourcesController의 create 메소드와 remove 메소드에 reload 메소드를 추가한다.
-```java
-    private final UrlFilterInvocationSecurityMetaDatsSource urlFilterInvocationSecurityMetaDatsSource;
-
-    @PostMapping(value = "/admin/resources")
-    public String createResources(ResourcesDto resourcesDto) throws Exception {
-        ModelMapper modelMapper = new ModelMapper();
-        Role role = roleRepository.findByRoleName(resourcesDto.getRoleName());
-        Set<Role> roles = new HashSet<>();
-        roles.add(role);
-        Resources resources = modelMapper.map(resourcesDto, Resources.class);
-        resources.setRoleSet(roles);
-    
-        resourcesService.createResources(resources);
-        urlFilterInvocationSecurityMetaDatsSource.reload();
-        return "redirect:/admin/resources";
-	}
-
-    @GetMapping(value = "/admin/resources/delete/{id}")
-    public String removeResources(@PathVariable String id, Model model) throws Exception {
-        Resources resources = resourcesService.getResources(Long.valueOf(id));
-        resourcesService.deleteResources(Long.valueOf(id));
-        urlFilterInvocationSecurityMetaDatsSource.reload();
-        return "redirect:/admin/resources";
-    }
-```
+#### 3. 실전프로젝트
+   - 인증 기능 구현 : Form방식, Ajax인증처리 
+   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
