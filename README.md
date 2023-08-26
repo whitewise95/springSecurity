@@ -1,30 +1,155 @@
-# 스프링 시큐리티 
-> Spring Boot 기반으로 개발하는 Spring Security
+# 6-8) 계층 권한 적용하기- RoleHierarchy
+> 현재는 ADMIN, MANAGER, USER 권한을 전부 가져야 모든 리소스에 접근이 가능하지만 계층을 셋팅해 ADMIN 권한만 있어도 MANAGER 와 USER 권한까지 인증할 수 있도록 한다.  
 
-## 공부 목적 
-- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
+![화면 캡처 2023-08-26 190509.jpg](..%2F..%2F..%2FDesktop%2F%ED%99%94%EB%A9%B4%20%EC%BA%A1%EC%B2%98%202023-08-26%20190509.jpg)
 
-## 개발 환경
-- JDK 11
-- Postgres
-- Intellij
-- JPA
-- Thymeleaf
-- Lombok
+<br>
+<br>
+<br>
 
-## 강의에서 다루는 내용  
+## RoleHierarchy Entity 생성
+> Role 의 계층을 저장해줄 엔티티 생성
+```java
+@Entity
+@Table(name = "ROLE_HIERARCHY")
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
+@Builder
+@ToString(exclude = {"parentName", "roleHierarchy"})
+//@JsonIdentityInfo(generator = ObjectIdGenerators.IntSequenceGenerator.class)
+public class RoleHierarchy implements Serializable {
 
-#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
-   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
-   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
+	@Id
+	@GeneratedValue
+	private Long id;
+
+	@Column(name = "child_name")
+	private String childName;
+
+	@ManyToOne(cascade = {CascadeType.ALL}, fetch = FetchType.LAZY)
+	@JoinColumn(name = "parent_name", referencedColumnName = "child_name")
+	private RoleHierarchy parentName;
+
+	@OneToMany(mappedBy = "parentName", cascade = {CascadeType.ALL})
+	private Set<RoleHierarchy> roleHierarchy = new HashSet<RoleHierarchy>();
+}
+```  
+
+<br>
+<br>
+
+## RoleHierarchyRepository 생성
+```java
+@Repository
+public interface RoleHierarchyRepository extends JpaRepository<RoleHierarchy, Long> {
+
+	RoleHierarchy findByChildName(String roleName);
+}
+```
+
+<br>
+<br>
+
+## RoleHierarchyService 생성
+> DB에서 계층 데이터를 조회해 데이터를 계층구조로 만들 로직
+```java
+@Service
+@RequiredArgsConstructor
+public class RoleHierarchyService {
+
+	private final RoleHierarchyRepository roleHierarchyRepository;
+
+	@Transactional
+	public String findAllHierarchy() {
+
+		List<RoleHierarchy> rolesHierarchy = roleHierarchyRepository.findAll();
+
+		Iterator<RoleHierarchy> itr = rolesHierarchy.iterator();
+		StringBuffer concatedRoles = new StringBuffer();
+		while (itr.hasNext()) {
+			RoleHierarchy model = itr.next();
+			if (model.getParentName() != null) {
+				concatedRoles.append(model.getParentName().getChildName());
+				concatedRoles.append(" > ");
+				concatedRoles.append(model.getChildName());
+				concatedRoles.append("\n");
+			}
+		}
+		return concatedRoles.toString();
+
+	}
+}
+```
+
+<br>
+<br>
+
+## SecurityInitializer 생성
+> 만들어준 계층 구조를 셋팅해주는 로직
+```java
+@Component
+@RequiredArgsConstructor
+public class SecurityInitializer implements ApplicationRunner {
+
+	private final RoleHierarchyService roleHierarchyService;
+
+	private final RoleHierarchyImpl roleHierarchy;
+
+	@Override
+	public void run(ApplicationArguments args) throws Exception {
+		String allHierarchy = roleHierarchyService.findAllHierarchy();
+		roleHierarchy.setHierarchy(allHierarchy);
+	}
+}
+```
+
+<br>
+<br>
+
+## SecurityConfig 수정
+> 로직 수정 및 추가한다.
+
+- 변경 전
+```java
+	@Bean
+	public List<AccessDecisionVoter<?>> getAccessDecistionVoters() {
+		return Arrays.asList(new RoleVoter());
+	}
+```
 
 <br>
 
-#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
-   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
+
+- 변경 후 
+```java
+	@Bean
+	public List<AccessDecisionVoter<?>> getAccessDecistionVoters() {
+		List<AccessDecisionVoter<? extends Object>> accessDecisionVoters = new ArrayList<>();
+		accessDecisionVoters.add(new RoleVoter());
+		return accessDecisionVoters;
+	}
+```
+
 
 <br>
 
-#### 3. 실전프로젝트
-   - 인증 기능 구현 : Form방식, Ajax인증처리 
-   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
+
+
+- 추가된 로직
+```java
+	@Bean
+	public AccessDecisionVoter<? extends Object> roleVoter() {
+		RoleHierarchyVoter roleHierarchyVoter = new RoleHierarchyVoter(roleHierarchy());
+		return roleHierarchyVoter;
+	}
+
+	@Bean
+	public RoleHierarchyImpl roleHierarchy() {
+		RoleHierarchyImpl roleHierarchy = new RoleHierarchyImpl();
+		return roleHierarchy;
+	}
+```
+
+
+

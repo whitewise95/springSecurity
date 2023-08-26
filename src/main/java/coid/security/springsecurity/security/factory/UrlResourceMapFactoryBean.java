@@ -1,6 +1,6 @@
 package coid.security.springsecurity.security.factory;
 
-import coid.security.springsecurity.service.SecurityResourceService;
+import coid.security.springsecurity.security.service.SecurityResourceService;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.security.access.ConfigAttribute;
 import org.springframework.security.web.util.matcher.RequestMatcher;

@@ -1,7 +1,7 @@
 package coid.security.springsecurity.security.coreSpringSecurity.config;
 
 import coid.security.springsecurity.repository.ResourcesRepository;
-import coid.security.springsecurity.service.SecurityResourceService;
+import coid.security.springsecurity.security.service.SecurityResourceService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

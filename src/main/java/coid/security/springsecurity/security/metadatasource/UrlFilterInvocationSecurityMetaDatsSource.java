@@ -1,6 +1,6 @@
 package coid.security.springsecurity.security.metadatasource;
 
-import coid.security.springsecurity.service.SecurityResourceService;
+import coid.security.springsecurity.security.service.SecurityResourceService;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
