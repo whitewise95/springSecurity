@@ -1,101 +1,138 @@
-# 6-6) 웹 기반 인가처리 실시간 반영하기
-> 권한을 수정하면 해당 권한이 바로 반영이 가능해야한다.
+# 6-7) 인가처리 허용 필터 - PermitAllFilter 구현
+> 6-5에서 권한검사를 한다면 모두가 접근할 수 있는 자원은 AbstractSecurityInterceptor에 보내지 않도록 할 것이다.  
+  ![img.png](img.png)
 
 
-## UrlFilterInvocationSecurityMetaDatsSource에 reload() 추가
+
+## FilterSecurityInterceptor 상속
+> FilterSecurityInterceptor 를 상속 받고 FilterSecurityInterceptor 클래스 내부 로직중 아래 내용만 가지고온다.  
 ```java
+	private static final String FILTER_APPLIED = "__spring_security_filterSecurityInterceptor_filterApplied";
+	private boolean observeOncePerRequest = true;
 
-public class UrlFilterInvocationSecurityMetaDatsSource implements FilterInvocationSecurityMetadataSource {
+    public void invoke(FilterInvocation filterInvocation) throws IOException, ServletException {
+        if (isApplied(filterInvocation) && this.observeOncePerRequest) {
+        // filter already applied to this request and user wants us to observe
+        // once-per-request handling, so don't re-do security checking
+        filterInvocation.getChain().doFilter(filterInvocation.getRequest(), filterInvocation.getResponse());
+        return;
+        }
+        // first time this request being called, so perform security checking
+        if (filterInvocation.getRequest() != null && this.observeOncePerRequest) {
+        filterInvocation.getRequest().setAttribute(FILTER_APPLIED, Boolean.TRUE);
+        }
+        InterceptorStatusToken token = beforeInvocation(filterInvocation);
+        try {
+        filterInvocation.getChain().doFilter(filterInvocation.getRequest(), filterInvocation.getResponse());
+        } finally {
+        super.finallyInvocation(token);
+        }
+        super.afterInvocation(token, null);
+        }
+    
+    private boolean isApplied(FilterInvocation filterInvocation) {
+        return (filterInvocation.getRequest() != null)
+        && (filterInvocation.getRequest().getAttribute(FILTER_APPLIED) != null);
+	}
+```  
 
-	private LinkedHashMap<RequestMatcher, List<ConfigAttribute>> requestMap = new LinkedHashMap<>();
+<br>
+<br>  
 
-	private SecurityResourceService securityResourceService;
+> 생성자를 통해 permitAll 자원을 등록한다. 
+> beforeInvocation 메소드를 통해 permitAll 자원과 일치한다면 null를 반환하여 더이상 진행하지 않도록 한다.  
+```java
+public class PermitAllFilter extends FilterSecurityInterceptor {
 
+	private static final String FILTER_APPLIED = "__spring_security_filterSecurityInterceptor_filterApplied";
+	private boolean observeOncePerRequest = true;
 
-	public UrlFilterInvocationSecurityMetaDatsSource(LinkedHashMap<RequestMatcher, List<ConfigAttribute>> requestMap, SecurityResourceService securityResourceService) {
-		this.securityResourceService = securityResourceService;
-		this.requestMap = requestMap;
+	private List<RequestMatcher> permitAllRequestMathchers = new ArrayList<>();
+
+	public PermitAllFilter(String...permitAllResources) {
+
+		for (String permitAllResource : permitAllResources) {
+			permitAllRequestMathchers.add(new AntPathRequestMatcher(permitAllResource));
+		}
 	}
 
 	@Override
-	public Collection<ConfigAttribute> getAttributes(Object object) throws IllegalArgumentException {
-
+	protected InterceptorStatusToken beforeInvocation(Object object) {
+		boolean isPermitAll = false;
 		HttpServletRequest request = ((FilterInvocation) object).getRequest();
-
-		if (requestMap != null) {
-			for (Map.Entry<RequestMatcher, List<ConfigAttribute>> entry : requestMap.entrySet()) {
-				RequestMatcher matcher = entry.getKey();
-				if (matcher.matches(request)) {
-					return entry.getValue();
-				}
+		for (RequestMatcher permitAllRequestMathcher : permitAllRequestMathchers) {
+			if (permitAllRequestMathcher.matches(request)){
+				isPermitAll = true;
+				break;
 			}
 		}
 
-		return null;
-	}
-
-	@Override
-	public Collection<ConfigAttribute> getAllConfigAttributes() {
-		Set<ConfigAttribute> allAttributes = new HashSet<>();
-
-		for (Map.Entry<RequestMatcher, List<ConfigAttribute>> entry : requestMap.entrySet()) {
-			allAttributes.addAll(entry.getValue());
+		if (isPermitAll){
+			return null;
 		}
-
-		return allAttributes;
+		return super.beforeInvocation(object);
 	}
 
-	@Override
-	public boolean supports(Class<?> clazz) {
-		return FilterInvocation.class.isAssignableFrom(clazz);
-	}
-
-	public void reload() {
-		LinkedHashMap<RequestMatcher, List<ConfigAttribute>> resourceList = securityResourceService.getResourceList();
-		Iterator<Map.Entry<RequestMatcher, List<ConfigAttribute>>> iterator = resourceList.entrySet().iterator();
-		requestMap.clear();
-
-		while (iterator.hasNext()) {
-			Map.Entry<RequestMatcher, List<ConfigAttribute>> entry = iterator.next();
-			requestMap.put(entry.getKey(), entry.getValue());
+	public void invoke(FilterInvocation filterInvocation) throws IOException, ServletException {
+      		if (isApplied(filterInvocation) && this.observeOncePerRequest) {
+			// filter already applied to this request and user wants us to observe
+			// once-per-request handling, so don't re-do security checking
+			filterInvocation.getChain().doFilter(filterInvocation.getRequest(), filterInvocation.getResponse());
+			return;
 		}
+		// first time this request being called, so perform security checking
+		if (filterInvocation.getRequest() != null && this.observeOncePerRequest) {
+			filterInvocation.getRequest().setAttribute(FILTER_APPLIED, Boolean.TRUE);
+		}
+		InterceptorStatusToken token = beforeInvocation(filterInvocation);
+		try {
+			filterInvocation.getChain().doFilter(filterInvocation.getRequest(), filterInvocation.getResponse());
+		} finally {
+			super.finallyInvocation(token);
+		}
+		super.afterInvocation(token, null);
+	}
 
+	private boolean isApplied(FilterInvocation filterInvocation) {
+		return (filterInvocation.getRequest() != null)
+			&& (filterInvocation.getRequest().getAttribute(FILTER_APPLIED) != null);
 	}
 }
 ```
 
-## SecurityConfig 수정
-> 생성자 인자로 securityResourceService를 추가한다.
+
+<br>
+<br>
+<br>
+
+## SecurityConfig 로직 수정
+> customFilterSecurityInterceptor 메소드를 이제 PermitAllFilter 를 생성하는 로직으로 수정한다.  
+
+- 기존로직  
 ```java
 	@Bean
-    public FilterInvocationSecurityMetadataSource urlFilterInvocationSecurityMetadatasource() throws Exception {
-	    return new UrlFilterInvocationSecurityMetaDatsSource(urlResourceMapFactoryBean().getObject(), securityResourceService);
+	public FilterSecurityInterceptor customFilterSecurityInterceptor() throws Exception {
+		FilterSecurityInterceptor filterSecurityInterceptor = new FilterSecurityInterceptor();
+		filterSecurityInterceptor.setSecurityMetadataSource(urlFilterInvocationSecurityMetadatasource());
+		filterSecurityInterceptor.setAccessDecisionManager(affirmativeBased());
+		filterSecurityInterceptor.setAuthenticationManager(authenticationManagerBean());
+		return filterSecurityInterceptor;
 	}
-```
+ 
+```  
 
-## ResourcesController의 create 메소드와 remove 메소드에 reload 메소드를 추가한다.
+<br>
+<br>  
+
+
+- 변경된 로직  
 ```java
-    private final UrlFilterInvocationSecurityMetaDatsSource urlFilterInvocationSecurityMetaDatsSource;
-
-    @PostMapping(value = "/admin/resources")
-    public String createResources(ResourcesDto resourcesDto) throws Exception {
-        ModelMapper modelMapper = new ModelMapper();
-        Role role = roleRepository.findByRoleName(resourcesDto.getRoleName());
-        Set<Role> roles = new HashSet<>();
-        roles.add(role);
-        Resources resources = modelMapper.map(resourcesDto, Resources.class);
-        resources.setRoleSet(roles);
-    
-        resourcesService.createResources(resources);
-        urlFilterInvocationSecurityMetaDatsSource.reload();
-        return "redirect:/admin/resources";
+	@Bean
+	public PermitAllFilter customFilterSecurityInterceptor() throws Exception {
+		PermitAllFilter permitAllFilter = new PermitAllFilter(permitAllResources);
+		permitAllFilter.setSecurityMetadataSource(urlFilterInvocationSecurityMetadatasource());
+		permitAllFilter.setAccessDecisionManager(affirmativeBased());
+		permitAllFilter.setAuthenticationManager(authenticationManagerBean());
+		return permitAllFilter;
 	}
-
-    @GetMapping(value = "/admin/resources/delete/{id}")
-    public String removeResources(@PathVariable String id, Model model) throws Exception {
-        Resources resources = resourcesService.getResources(Long.valueOf(id));
-        resourcesService.deleteResources(Long.valueOf(id));
-        urlFilterInvocationSecurityMetaDatsSource.reload();
-        return "redirect:/admin/resources";
-    }
 ```

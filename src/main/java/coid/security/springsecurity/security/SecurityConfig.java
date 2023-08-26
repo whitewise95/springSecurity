@@ -1,15 +1,15 @@
 package coid.security.springsecurity.security;
 
 import coid.security.springsecurity.security.factory.UrlResourceMapFactoryBean;
+import coid.security.springsecurity.security.filter.PermitAllFilter;
 import coid.security.springsecurity.security.handler.CustomAccessDeniedHandler;
 import coid.security.springsecurity.security.handler.CustomAuthenticationFailureHandler;
 import coid.security.springsecurity.security.handler.CustomAuthenticationSuccessHandler;
 import coid.security.springsecurity.security.metadatasource.UrlFilterInvocationSecurityMetaDatsSource;
 import coid.security.springsecurity.security.provider.CustomAuthenticationProvider;
+import coid.security.springsecurity.service.SecurityResourceService;
 import java.util.Arrays;
 import java.util.List;
-
-import coid.security.springsecurity.service.SecurityResourceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
@@ -46,6 +46,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	private final CustomAuthenticationSuccessHandler authenticationSuccessHandler;
 	private final CustomAuthenticationFailureHandler authenticationFailureHandler;
 	private final SecurityResourceService securityResourceService;
+	private String[] permitAllResources = {"/", "/login", "/user/login/**"};
 
 
 	@Override
@@ -102,12 +103,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	}
 
 	@Bean
-	public FilterSecurityInterceptor customFilterSecurityInterceptor() throws Exception {
-		FilterSecurityInterceptor filterSecurityInterceptor = new FilterSecurityInterceptor();
-		filterSecurityInterceptor.setSecurityMetadataSource(urlFilterInvocationSecurityMetadatasource());
-		filterSecurityInterceptor.setAccessDecisionManager(affirmativeBased());
-		filterSecurityInterceptor.setAuthenticationManager(authenticationManagerBean());
-		return filterSecurityInterceptor;
+	public PermitAllFilter customFilterSecurityInterceptor() throws Exception {
+		PermitAllFilter permitAllFilter = new PermitAllFilter(permitAllResources);
+		permitAllFilter.setSecurityMetadataSource(urlFilterInvocationSecurityMetadatasource());
+		permitAllFilter.setAccessDecisionManager(affirmativeBased());
+		permitAllFilter.setAuthenticationManager(authenticationManagerBean());
+		return permitAllFilter;
 	}
 
 	@Bean
