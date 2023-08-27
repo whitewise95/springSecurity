@@ -126,7 +126,7 @@ public class SecurityInitializer implements ApplicationRunner {
 	@Bean
 	public List<AccessDecisionVoter<?>> getAccessDecistionVoters() {
 		List<AccessDecisionVoter<? extends Object>> accessDecisionVoters = new ArrayList<>();
-		accessDecisionVoters.add(new RoleVoter());
+		accessDecisionVoters.add(roleVoter());
 		return accessDecisionVoters;
 	}
 ```
