@@ -1,7 +1,10 @@
 package coid.security.springsecurity.security.service;
 
+import coid.security.springsecurity.dmain.AccessIp;
 import coid.security.springsecurity.dmain.Resources;
+import coid.security.springsecurity.repository.AccessIpRepository;
 import coid.security.springsecurity.repository.ResourcesRepository;
+import java.util.stream.Collectors;
 import org.springframework.security.access.ConfigAttribute;
 import org.springframework.security.access.SecurityConfig;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
@@ -14,9 +17,11 @@ import java.util.List;
 public class SecurityResourceService {
 
     private ResourcesRepository resourcesRepository;
+    private AccessIpRepository accessIpRepository;
 
-    public SecurityResourceService(ResourcesRepository resourcesRepository) {
+    public SecurityResourceService(ResourcesRepository resourcesRepository, AccessIpRepository accessIpRepository) {
         this.resourcesRepository = resourcesRepository;
+        this.accessIpRepository = accessIpRepository;
     }
 
     public LinkedHashMap<RequestMatcher, List<ConfigAttribute>> getResourceList() {
@@ -30,5 +35,9 @@ public class SecurityResourceService {
         });
 
         return result;
+    }
+
+	public List<String> getAccessIpList() {
+        return accessIpRepository.findAll().stream().map(AccessIp::getIpAddress).collect(Collectors.toList());
     }
 }

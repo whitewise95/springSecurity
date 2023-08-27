@@ -8,6 +8,7 @@ import coid.security.springsecurity.security.handler.CustomAuthenticationSuccess
 import coid.security.springsecurity.security.metadatasource.UrlFilterInvocationSecurityMetaDatsSource;
 import coid.security.springsecurity.security.provider.CustomAuthenticationProvider;
 import coid.security.springsecurity.security.service.SecurityResourceService;
+import coid.security.springsecurity.security.voter.IpAddressVoter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -125,6 +126,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	@Bean
 	public List<AccessDecisionVoter<?>> getAccessDecistionVoters() {
 		List<AccessDecisionVoter<? extends Object>> accessDecisionVoters = new ArrayList<>();
+		accessDecisionVoters.add(new IpAddressVoter(securityResourceService));
 		accessDecisionVoters.add(roleVoter());
 		return accessDecisionVoters;
 	}

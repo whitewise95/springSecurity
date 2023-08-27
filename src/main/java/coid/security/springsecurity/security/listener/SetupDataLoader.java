@@ -1,9 +1,11 @@
 package coid.security.springsecurity.security.listener;
 
+import coid.security.springsecurity.dmain.AccessIp;
 import coid.security.springsecurity.dmain.Account;
 import coid.security.springsecurity.dmain.Resources;
 import coid.security.springsecurity.dmain.Role;
 import coid.security.springsecurity.dmain.RoleHierarchy;
+import coid.security.springsecurity.repository.AccessIpRepository;
 import coid.security.springsecurity.repository.ResourcesRepository;
 import coid.security.springsecurity.repository.RoleHierarchyRepository;
 import coid.security.springsecurity.repository.RoleRepository;
@@ -28,6 +30,7 @@ public class SetupDataLoader implements ApplicationListener<ContextRefreshedEven
 	private final ResourcesRepository resourcesRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final RoleHierarchyRepository roleHierarchyRepository;
+	private final AccessIpRepository accessIpRepository;
 
 	private static AtomicInteger count = new AtomicInteger(0);
 
@@ -44,8 +47,9 @@ public class SetupDataLoader implements ApplicationListener<ContextRefreshedEven
 		alreadySetup = true;
 	}
 
+	public void setupSecurityResources() {
+		setupAccessIpData();
 
-	private void setupSecurityResources() {
 		Set<Role> roles = new HashSet<>();
 		Role adminRole = createRoleIfNotFound("ROLE_ADMIN", "관리자");
 		roles.add(adminRole);
@@ -56,18 +60,18 @@ public class SetupDataLoader implements ApplicationListener<ContextRefreshedEven
 
 
 		Role managerRole = createRoleIfNotFound("ROLE_MANAGER", "매니저");
-		// roles1.add(managerRole);
-		// createResourceIfNotFound("io.security.corespringsecurity.aopsecurity.method.AopMethodService.methodTest", "", roles1, "method");
-		// createResourceIfNotFound("io.security.corespringsecurity.aopsecurity.method.AopMethodService.innerCallMethodTest", "", roles1, "method");
-		// createResourceIfNotFound("execution(* io.security.corespringsecurity.aopsecurity.pointcut.*Service.*(..))", "", roles1, "pointcut");
-		// createUserIfNotFound("manager", "pass", "manager@gmail.com", 20, roles1);
+		roles1.add(managerRole);
+		createResourceIfNotFound("io.security.corespringsecurity.aopsecurity.method.AopMethodService.methodTest", "", roles1, "method");
+		createResourceIfNotFound("io.security.corespringsecurity.aopsecurity.method.AopMethodService.innerCallMethodTest", "", roles1, "method");
+		createResourceIfNotFound("execution(* io.security.corespringsecurity.aopsecurity.pointcut.*Service.*(..))", "", roles1, "pointcut");
+		createUserIfNotFound("manager", "pass", "manager@gmail.com", 20, roles1);
 
-		// Set<Role> roles3 = new HashSet<>();
+		Set<Role> roles3 = new HashSet<>();
 
 		Role childRole1 = createRoleIfNotFound("ROLE_USER", "회원");
-		// roles3.add(childRole1);
-		// createResourceIfNotFound("/users/**", "", roles3, "url");
-		// createUserIfNotFound("user", "pass", "user@gmail.com", 30, roles3);
+		roles3.add(childRole1);
+		createResourceIfNotFound("/users/**", "", roles3, "url");
+		createUserIfNotFound("user", "pass", "user@gmail.com", 30, roles3);
 		createRoleHierarchyIfNotFound(childRole1, managerRole);
 		createRoleHierarchyIfNotFound(managerRole, adminRole);
 
@@ -140,5 +144,15 @@ public class SetupDataLoader implements ApplicationListener<ContextRefreshedEven
 
 		RoleHierarchy childRoleHierarchy = roleHierarchyRepository.save(roleHierarchy);
 		childRoleHierarchy.setParentName(parentRoleHierarchy);
+	}
+
+	private void setupAccessIpData() {
+		AccessIp byIpAddress = accessIpRepository.findByIpAddress("127.0.0.1");
+		if (byIpAddress == null) {
+			AccessIp accessIp = AccessIp.builder()
+										.ipAddress("127.0.0.1")
+										.build();
+			accessIpRepository.save(accessIp);
+		}
 	}
 }
