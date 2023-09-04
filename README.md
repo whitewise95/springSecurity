@@ -1,30 +1,47 @@
-# 스프링 시큐리티 
-> Spring Boot 기반으로 개발하는 Spring Security
+# 7-3) AOP Method 기반 DB 연동 - 주요 아키텍처 이해
 
-## 공부 목적 
-- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
+## 인가 처리를 위한 초기화 과정과 진행
+- 초기화 과정  
+1 초기화 시 전체 빈을 검사하면서 보안이 설정된 메소드가 있는지 탐색  
+2 빈의 프록시 객체를 생성  
+3 보안 메소드에 인가처리(권한심사) 기능을 하는 Advice 를 등록  
+4 빈 참조시 실제 빈이 아닌 프록시 빈 객체를 참조  
 
-## 개발 환경
-- JDK 11
-- Postgres
-- Intellij
-- JPA
-- Thymeleaf
-- Lombok
+![img_2.png](img_2.png)
 
-## 강의에서 다루는 내용  
-
-#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
-   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
-   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
 
 <br>
-
-#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
-   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
-
+<br>
 <br>
 
-#### 3. 실전프로젝트
-   - 인증 기능 구현 : Form방식, Ajax인증처리 
-   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
+
+- 진행과정  
+1 메소드 호출 시 프록시 객체를 통해 메소드를 호출  
+2 Advice가 등록되어 있다면 Advice를 작동하게 하여 인가 처리  
+3 권한 심사 통과하면 실제 빈의 메소드를 호출한다   
+
+
+![img_1.png](img_1.png)
+
+
+
+## 사용법
+- 기존 ` myPage()` 메소드에  `userService.order();`  메소드를 추가한다.
+```java
+	@GetMapping(value = "/mypage")
+	public String myPage() throws Exception {
+
+		userService.order();
+		
+		return "/user/mypage";
+	}
+```
+
+
+- `order()` 메소드에는 `@Secured("ROLE_MANAGER")`를 추가해 myPage에는 ROLE_USER 는 접근할 수 있지만 order()메소드에 접근은 못하는걸 확인할 수 있다.
+```java
+    @Secured("ROLE_MANAGER")
+	public void order() {
+        System.out.println("order");
+    }
+```
