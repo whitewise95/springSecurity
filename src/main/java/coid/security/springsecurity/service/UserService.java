@@ -80,4 +80,8 @@ public class UserService {
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
     }
+
+    @Secured("ROLE_MANAGER")
+    public void order() {
+    }
 }

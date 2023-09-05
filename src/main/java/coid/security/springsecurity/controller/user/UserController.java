@@ -6,6 +6,7 @@ import coid.security.springsecurity.dto.AccountDto;
 import coid.security.springsecurity.dto.AccountDtoMapper;
 import coid.security.springsecurity.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +20,10 @@ public class UserController {
 	private final PasswordEncoder passwordEncoder;
 
 	@GetMapping(value = "/mypage")
+	@Secured("ROLE_MANAGER")
 	public String myPage() throws Exception {
+
+		userService.order();
 		return "/user/mypage";
 	}
 
