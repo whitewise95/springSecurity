@@ -45,7 +45,6 @@ import org.springframework.security.web.access.intercept.FilterSecurityIntercept
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-@EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
 @Order(1)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
