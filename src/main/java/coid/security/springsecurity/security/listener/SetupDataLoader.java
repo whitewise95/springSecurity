@@ -61,10 +61,6 @@ public class SetupDataLoader implements ApplicationListener<ContextRefreshedEven
 
 		Role managerRole = createRoleIfNotFound("ROLE_MANAGER", "매니저");
 		roles1.add(managerRole);
-		createResourceIfNotFound("io.security.corespringsecurity.aopsecurity.method.AopMethodService.methodTest", "", roles1, "method");
-		createResourceIfNotFound("io.security.corespringsecurity.aopsecurity.method.AopMethodService.innerCallMethodTest", "", roles1, "method");
-		createResourceIfNotFound("execution(* io.security.corespringsecurity.aopsecurity.pointcut.*Service.*(..))", "", roles1, "pointcut");
-		createUserIfNotFound("manager", "pass", "manager@gmail.com", 20, roles1);
 
 		Set<Role> roles3 = new HashSet<>();
 
@@ -74,6 +70,11 @@ public class SetupDataLoader implements ApplicationListener<ContextRefreshedEven
 		createUserIfNotFound("user", "pass", "user@gmail.com", 30, roles3);
 		createRoleHierarchyIfNotFound(childRole1, managerRole);
 		createRoleHierarchyIfNotFound(managerRole, adminRole);
+
+		createResourceIfNotFound("coid.security.springsecurity.aopSecurity.AopMethodService.methodSecured", "", roles3, "method");
+		// createResourceIfNotFound("coid.security.springsecurity.aopsecurity.method.AopMethodService.innerCallMethodTest", "", roles1, "method");
+		// createResourceIfNotFound("execution(* coid.security.springsecurity.aopsecurity.pointcut.*Service.*(..))", "", roles1, "pointcut");
+		// createUserIfNotFound("manager", "pass", "manager@gmail.com", 20, roles1);
 
 	}
 
