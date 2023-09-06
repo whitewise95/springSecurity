@@ -1,30 +1,165 @@
-# 스프링 시큐리티 
-> Spring Boot 기반으로 개발하는 Spring Security
+# 7-6) AOP Method 기반 DB 연동 - MapBasedSecurityMetadataSource (3)
 
-## 공부 목적 
-- 스프링시큐리티를 실무에서 자유자재로 사용할 수 있도록 보다 깊게 이해하고 습득하기 위해서!
+## FactoryBean<LinkedHashMap<String, List<ConfigAttribute>>> 구현 클래스 생성
+```java
+public class MethodResourceFactoryBean implements FactoryBean<LinkedHashMap<String, List<ConfigAttribute>>> {
 
-## 개발 환경
-- JDK 11
-- Postgres
-- Intellij
-- JPA
-- Thymeleaf
-- Lombok
+	private SecurityResourceService securityResourceService;
+	private LinkedHashMap<String, List<ConfigAttribute>> resourceMap;
 
-## 강의에서 다루는 내용  
+	public void setSecurityResourceService(SecurityResourceService securityResourceService) {
+		this.securityResourceService = securityResourceService;
+	}
 
-#### 1. 스프링 시큐리티의 보안 설정 APi와 이와 연계된 각 Filter들에 대해 학습한다.
-   - 각 API의 개념과 기본적인 사용법, API 처리 과정, API 동작방식 등 학습
-   - API 설정 시 생성 및 초기화 되어 사용자의 요청을 처리하는 Filter 학습
+	@Override
+	public LinkedHashMap<String, List<ConfigAttribute>> getObject() {
+		if (resourceMap == null) {
+			init();
+		}
+		return resourceMap;
+	}
 
-<br>
+	private void init() {
+		resourceMap = securityResourceService.getMethodResourceList();
+	}
 
-#### 2. 스프링 시큐리티 내부 아키텍처와 각 객체의 역활 및 처리과정을 학습한다.
-   - 초기화 과정, 인증 과정, 인과과정, 등을 아키텍처적인 관점에서 학슴
+	@Override
+	public Class<?> getObjectType() {
+		return LinkedHashMap.class;
+	}
 
-<br>
+	@Override
+	public boolean isSingleton() {
+		return FactoryBean.super.isSingleton();
+	}
+}
+```
 
-#### 3. 실전프로젝트
-   - 인증 기능 구현 : Form방식, Ajax인증처리 
-   - 인가 기능 구현 : DB와 연동해서 권한 제어 시스템 구현
+## SecurityResourceService 클래스에서 getMethodResourceList() 메소드 생성
+```java
+    public LinkedHashMap<String, List<ConfigAttribute>> getMethodResourceList() {
+        LinkedHashMap<String, List<ConfigAttribute>> result = new LinkedHashMap<>();
+
+        List<Resources> resourcesList = resourcesRepository.findAllMethodResources();
+        resourcesList.forEach(x -> {
+            List<ConfigAttribute> configAttributeList = new ArrayList<>();
+            x.getRoleSet().forEach(role -> configAttributeList.add(new SecurityConfig(role.getRoleName())));
+            result.put(x.getResourceName(), configAttributeList);
+        });
+
+        return result;
+    }
+```
+
+
+## ResourcesRepository.findAllMethodResources() 메소드 생성
+```java
+    @Query("select r from Resources r join fetch r.roleSet where r.resourceType = 'method' order by r.orderNum desc")
+    List<Resources> findAllMethodResources();
+```
+
+## SetupDataLoader.setupSecurityResources() 메소드 수정  
+- 런타임시 해당 데이터가 MethodSecurityInterceptor가 인가처리 어드바이스로 등록한다.
+
+
+![img.png](img.png)
+
+```java
+	public void setupSecurityResources() {
+		setupAccessIpData();
+
+		Set<Role> roles = new HashSet<>();
+		Role adminRole = createRoleIfNotFound("ROLE_ADMIN", "관리자");
+		roles.add(adminRole);
+		createResourceIfNotFound("/admin/**", "", roles, "url");
+		Account account = createUserIfNotFound("admin", "pass", "admin@gmail.com", 10, roles);
+
+		Set<Role> roles1 = new HashSet<>();
+
+
+		Role managerRole = createRoleIfNotFound("ROLE_MANAGER", "매니저");
+		roles1.add(managerRole);
+
+		Set<Role> roles3 = new HashSet<>();
+
+		Role childRole1 = createRoleIfNotFound("ROLE_USER", "회원");
+		roles3.add(childRole1);
+		createResourceIfNotFound("/users/**", "", roles3, "url");
+		createUserIfNotFound("user", "pass", "user@gmail.com", 30, roles3);
+		createRoleHierarchyIfNotFound(childRole1, managerRole);
+		createRoleHierarchyIfNotFound(managerRole, adminRole);
+
+		createResourceIfNotFound("coid.security.springsecurity.aopSecurity.AopMethodService.methodSecured", "", roles3, "method");   // 추가된 내용  
+		// createResourceIfNotFound("coid.security.springsecurity.aopsecurity.method.AopMethodService.innerCallMethodTest", "", roles1, "method");
+		// createResourceIfNotFound("execution(* coid.security.springsecurity.aopsecurity.pointcut.*Service.*(..))", "", roles1, "pointcut");
+		// createUserIfNotFound("manager", "pass", "manager@gmail.com", 20, roles1);
+		
+	}
+```
+
+## MethodSecurityConfig 클래스 로직추가 
+```java
+@Configuration
+@RequiredArgsConstructor
+@EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
+public class MethodSecurityConfig extends GlobalMethodSecurityConfiguration {
+
+	private final SecurityResourceService securityResourceService;
+
+
+	@Override
+	protected MethodSecurityMetadataSource customMethodSecurityMetadataSource() {
+		return mapBasedMethodSecurityMetadataSource();
+	}
+
+	@Bean
+	public MapBasedMethodSecurityMetadataSource mapBasedMethodSecurityMetadataSource() {
+		return new MapBasedMethodSecurityMetadataSource(methodResourcesMapFactoryBean().getObject());
+	}
+
+	@Bean
+	public MethodResourceFactoryBean methodResourcesMapFactoryBean() {
+		MethodResourceFactoryBean methodResourceFactoryBean = new MethodResourceFactoryBean();
+		methodResourceFactoryBean.setSecurityResourceService(securityResourceService);
+		return methodResourceFactoryBean;
+	}
+}
+```
+
+## AopMethodService 생성
+```java
+@Service
+public class AopMethodService {
+
+	public void methodSecured() {
+		System.out.println("methodSecured");
+	}
+
+}
+```
+
+
+## AopSecurityController 클래스에 로직추가
+```java
+	@GetMapping("/methodSecured")
+	public String methodSecured(Model model) {
+		aopMethodService.methodSecured();
+		model.addAttribute("method", "Success MethodSecured");
+		return "aop/method";
+	}
+```
+
+## method.html 와 home.html 에 로직추가
+- method.html
+```java
+ <a th:href="@{/methodSecured}" style="" class="nav-link text-primary">메소드보안</a>
+```
+
+- home.html
+```java
+<a th:href="@{/methodSecured}"style=""class="nav-link text-primary">메소드보안</a>
+```
+
+
+
+

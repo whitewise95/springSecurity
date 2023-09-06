@@ -13,7 +13,9 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import org.springframework.stereotype.Service;
 
+@Service
 public class SecurityResourceService {
 
     private ResourcesRepository resourcesRepository;
@@ -32,6 +34,19 @@ public class SecurityResourceService {
             List<ConfigAttribute> configAttributeList = new ArrayList<>();
             x.getRoleSet().forEach(role -> configAttributeList.add(new SecurityConfig(role.getRoleName())));
             result.put(new AntPathRequestMatcher(x.getResourceName()), configAttributeList);
+        });
+
+        return result;
+    }
+
+    public LinkedHashMap<String, List<ConfigAttribute>> getMethodResourceList() {
+        LinkedHashMap<String, List<ConfigAttribute>> result = new LinkedHashMap<>();
+
+        List<Resources> resourcesList = resourcesRepository.findAllMethodResources();
+        resourcesList.forEach(x -> {
+            List<ConfigAttribute> configAttributeList = new ArrayList<>();
+            x.getRoleSet().forEach(role -> configAttributeList.add(new SecurityConfig(role.getRoleName())));
+            result.put(x.getResourceName(), configAttributeList);
         });
 
         return result;
