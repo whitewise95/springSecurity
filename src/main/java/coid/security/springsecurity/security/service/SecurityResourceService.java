@@ -4,16 +4,16 @@ import coid.security.springsecurity.dmain.AccessIp;
 import coid.security.springsecurity.dmain.Resources;
 import coid.security.springsecurity.repository.AccessIpRepository;
 import coid.security.springsecurity.repository.ResourcesRepository;
-import java.util.stream.Collectors;
 import org.springframework.security.access.ConfigAttribute;
 import org.springframework.security.access.SecurityConfig;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import org.springframework.stereotype.Service;
+import java.util.stream.Collectors;
 
 @Service
 public class SecurityResourceService {
@@ -52,7 +52,22 @@ public class SecurityResourceService {
         return result;
     }
 
-	public List<String> getAccessIpList() {
+    public LinkedHashMap<String, List<ConfigAttribute>> getPointcutResourceList() {
+        LinkedHashMap<String, List<ConfigAttribute>> result = new LinkedHashMap<>();
+
+        List<Resources> resourcesList = resourcesRepository.findAllPointcutResources();
+        resourcesList.forEach(x -> {
+            List<ConfigAttribute> configAttributeList = new ArrayList<>();
+            x.getRoleSet().forEach(role -> configAttributeList.add(new SecurityConfig(role.getRoleName())));
+            result.put(x.getResourceName(), configAttributeList);
+        });
+
+        return result;
+    }
+
+    public List<String> getAccessIpList() {
         return accessIpRepository.findAll().stream().map(AccessIp::getIpAddress).collect(Collectors.toList());
     }
+
+
 }
