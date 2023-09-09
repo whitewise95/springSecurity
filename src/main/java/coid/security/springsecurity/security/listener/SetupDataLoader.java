@@ -73,7 +73,7 @@ public class SetupDataLoader implements ApplicationListener<ContextRefreshedEven
 
 		createResourceIfNotFound("coid.security.springsecurity.aopSecurity.AopMethodService.methodSecured", "", roles3, "method");
 		// createResourceIfNotFound("coid.security.springsecurity.aopsecurity.method.AopMethodService.innerCallMethodTest", "", roles1, "method");
-		// createResourceIfNotFound("execution(* coid.security.springsecurity.aopsecurity.pointcut.*Service.*(..))", "", roles1, "pointcut");
+		 createResourceIfNotFound("execution(* coid.security.springsecurity.aopSecurity.pointcut.*Service.pointcut*(..))", "", roles1, "pointcut");
 		// createUserIfNotFound("manager", "pass", "manager@gmail.com", 20, roles1);
 
 	}
